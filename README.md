@@ -65,19 +65,19 @@ Created two s3 Buckets `ai-recon-lab-data-jk-agentic-2026` & `ai-recon-lab-docs-
 - Enabled Bucket versioning
 - Enable Default Encryption SSE-S3 (will harden security and update to an SSE-KMS)
 
-S3 Bucket `ai-recon-lab-data-jk-agentic-2026`
-- Created Folders: `incoming/` `processed/` `athena-results/`
-- In the `incoming/` folder created folders `source/` & `target/`
-- Uploaded the `source_system.csv` & `target_system.csv` files to their respective folders
-  - Adding both CSVs in the same `incoming/`folder(no sub-folder), Athena will read both unless you separate them; so it’s better to create subfolders and point each table to its folder
+1. S3 Bucket `ai-recon-lab-data-jk-agentic-2026`
+  - Created Folders: `incoming/` `processed/` `athena-results/`
+  - In the `incoming/` folder created folders `source/` & `target/`
+  - Uploaded the `source_system.csv` & `target_system.csv` files to their respective folders
+    - Adding both CSVs in the same `incoming/`folder(no sub-folder), Athena will read both unless you separate them; so it’s better to create subfolders and point each table to its folder
 
 | `ai-recon-lab-data-jk-agentic-2026`| `source/`| `target/`|
 |----------------------------|----------------------------|----------------------------|
 |<img width="1893" height="714" alt="image" src="https://github.com/user-attachments/assets/7cc8f338-7e04-466a-9659-1570633f7a0b" />|<img width="1918" height="609" alt="image" src="https://github.com/user-attachments/assets/0bc9aaa5-c4ae-4003-824c-0b19dcb174a1" />|<img width="1918" height="604" alt="image" src="https://github.com/user-attachments/assets/f45fb316-3d08-4751-8145-2ba8456761de" />|
 
-S3 Bucket `ai-recon-lab-docs-jk-agentic-2026`
-- Created Folders: `policies/`
-- In the `policies/`uploaded created polocy files `recon-policy.txt` `data-quality-rules.txt` `exception-handling-runbook.txt`
+2. S3 Bucket `ai-recon-lab-docs-jk-agentic-2026`
+  - Created Folders: `policies/`
+  - In the `policies/`uploaded created polocy files `recon-policy.txt` `data-quality-rules.txt` `exception-handling-runbook.txt`
 <img width="1893" height="714" alt="image" src="https://github.com/user-attachments/assets/478b7fb7-a55e-47aa-a118-a230a2120e86" />
 
 
