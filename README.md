@@ -91,33 +91,5 @@ Created two s3 Buckets `ai-recon-lab-data-jk-agentic-2026` & `ai-recon-lab-docs-
 
 | Create Database | Point to `source/`| Point to `target/`|
 |----------------------------|----------------------------|----------------------------|
-|```CREATE DATABASE IF NOT EXISTS recon_lab;```
-|```CREATE EXTERNAL TABLE IF NOT EXISTS recon_lab.source_system (
-  trade_id   string,
-  account_id string,
-  trade_date string,
-  amount     double
-)
-ROW FORMAT SERDE 'org.apache.hadoop.hive.serde2.OpenCSVSerde'
-WITH SERDEPROPERTIES (
-  'separatorChar' = ',',
-  'quoteChar'     = '"',
-  'escapeChar'    = '\\'
-)
-LOCATION 's3://recon-lab-data-jk-agentic-2026/incoming/source/'
-TBLPROPERTIES ('skip.header.line.count'='1');```
-|```CREATE EXTERNAL TABLE IF NOT EXISTS recon_lab.target_system (
-  trade_id   string,
-  account_id string,
-  trade_date string,
-  amount     double
-)
-ROW FORMAT SERDE 'org.apache.hadoop.hive.serde2.OpenCSVSerde'
-WITH SERDEPROPERTIES (
-  'separatorChar' = ',',
-  'quoteChar'     = '"',
-  'escapeChar'    = '\\'
-)
-LOCATION 's3://recon-lab-data-jk-agentic-2026/incoming/target/'
-TBLPROPERTIES ('skip.header.line.count'='1');|
+|```CREATE DATABASE IF NOT EXISTS recon_lab;```|```code```|```code```|
 
