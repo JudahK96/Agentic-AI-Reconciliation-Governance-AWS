@@ -27,3 +27,23 @@ These issues increase operational risk, reduce trust in data, and make audits an
 | **Security & IAM**                 | • IAM role design and least-privilege access control<br>• Customer-managed encryption using AWS KMS (SSE-KMS)<br>• Secure service-to-service access patterns<br>• Understanding which services require encryption key access and why<br>• Defense-in-depth security mindset                                                                                                                 | **API & Integration**            | • Designing backend APIs for frontend consumption<br>• Enabling and configuring CORS for browser-based UIs<br>• RESTful endpoint design and query parameter handling<br>• JSON response normalization for UI compatibility<br>• Integration patterns for Angular / SPA frontends |
 | **Observability & Reliability**    | • CloudWatch Logs for distributed debugging<br>• AWS X-Ray tracing for end-to-end request visibility<br>• Step Functions execution monitoring<br>• Error handling, retries, and failure isolation<br>• Operational visibility in agentic workflows                                                                                                                                          | **DevOps & Cost Awareness**      | • Cost-efficient service selection (Athena vs. SageMaker)<br>• Zero-idle-cost serverless architectures<br>• Safe shutdown and resource cleanup practices<br>• Budget awareness and billing guardrails<br>• Designing systems that can scale down to $0                           |
 | **Software Engineering Practices** | • Clean separation of concerns<br>• Defensive programming and validation<br>• JSON schema enforcement<br>• Stateless Lambda function design<br>• Production-oriented error handling                                                                                                                                                                                                         |                                  |                                                                                                                                                                                                                                                                                  |
+### Creating S3 Bucket/Uploading Data
+Created two s3 Buckets `ai-recon-lab-data-jk-agentic-2026` & `ai-recon-lab-docs-jk-agentic-2026`
+- Enabled Bucket versioning
+- Enable Default Encryption SSE-S3 (whill harden security and update to an SSE-KMS)
+
+S3 Bucket **ai-recon-lab-data-jk-agentic-2026**
+- Created Folders: `incoming/` `processed/` `athena-results/`
+
+S3 Bucket **ai-recon-lab-docs-jk-agentic-2026**
+- Created Folders: `policies/`
+
+
+
+
+### Folder-scoped S3 layout (`incoming/source/` vs `incoming/target/`)
+**Decision:** Separate data sources into explicit S3 prefixes.
+**Why:**
+- Prevents accidental cross-reading in Athena
+- Mirrors real data lake zone design
+- Improves clarity and governance
