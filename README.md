@@ -741,3 +741,22 @@ This is an AWS Step Functions state machine that orchestrates a recon + AI triag
 | **4. TriageEachException (Map)** | Iterates over `$.recon.Payload.exception_ids` and runs triage in parallel (**MaxConcurrency = 5**).<br><br>For each item:<br>• `exception_id` = current item<br>• `run_id` = `$.recon.Payload.run_id`<br><br>Inside Map:<br>• **AITriage (Task – Lambda invoke)** calls `ai_triage_exception`<br>• Stores result at `$.triage` per item<br>• Retries up to **2 times** with backoff<br><br>All results stored at `$.triage_results` |
 | **5. Done (Succeed)** | Workflow completes successfully after all exception triages finish |
 | **Visual Flow** | <img width="662" height="817" alt="Step Functions workflow" src="https://github.com/user-attachments/assets/2a6bd135-b55e-4b6f-9685-4761fb885e37" /> |
+
+## Trigger workflow on new uploads with EventBridge
+# - Create Event Bridge Rule
+| Code | Target | Role Perms |
+|---|---|---|
+| <pre><code>{
+  "source": ["aws.s3"],
+  "detail-type": ["AWS API Call via CloudTrail"],
+  "detail": {
+    "eventSource": ["s3.amazonaws.com"],
+    "eventName": ["PutObject", "CompleteMultipartUpload", "CopyObject"],
+    "requestParameters": {
+      "bucketName": ["recon-lab-data-jk-agentic-2026"],
+      "key": [{
+        "prefix": "incoming/"
+      }]
+    }
+  }
+}</code></pre> | <img width="1459" height="808" alt="EventBridge target" src="https://github.com/user-attachments/assets/419197a2-2c8e-4085-8bb7-80e559b9b97b" /><br>We target the Step Function `recon-agentic-orchestrator`. | <img width="1458" height="847" alt="EventBridge role permissions" src="https://github.com/user-attachments/assets/762081e4-d126-4ca4-86ef-bb81983037f4" /><br>• Check the role has `states:StartExecution` on your state machine ARN.<br>• If the rule fires but Step Functions doesn’t start, it’s almost always this permission. |
