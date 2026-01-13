@@ -957,6 +957,7 @@ Confirmed statusCode: 200 and a JSON body containing count and items were return
 
 ## Observability with CloudWatch + X-Ray
 Each Lambda need AWS Tracing enabled
+- Give the `lambda-recon-lab-role` X-Ray permissions with ***AWSXRayDaemonWriteAccess***
 |`get_exceptions`|`run_recon_and_write_exceptions`|`ai_triage_exceptions`|
 |-|-|-|
 |<img width="1609" height="1079" alt="image" src="https://github.com/user-attachments/assets/89ce67ee-9021-45d6-ac6a-c8ca52425ec9" />|<img width="1606" height="1089" alt="image" src="https://github.com/user-attachments/assets/e7fad1bb-4bf1-4c93-9f0c-901885de5bee" />|<img width="1609" height="1092" alt="image" src="https://github.com/user-attachments/assets/10d149e6-7291-4bf1-8155-c22ae67b8097" />|
