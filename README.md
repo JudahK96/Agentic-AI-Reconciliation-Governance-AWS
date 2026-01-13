@@ -5,18 +5,14 @@ The goal was not to build a demo model, but to show **production-oriented decisi
 This design mirrors real enterprise use cases in **financial services, compliance, and operations**, where explain-ability, auditability, and cost control matter as much as AI capability.
 
 ### Problem Statement
-Organizations routinely reconcile data between multiple systems (e.g., source vs. target systems).
+Organizations routinely need to reconcile data across multiple systems (e.g., source vs. target, upstream vs. downstream). As data volume and system complexity grow, traditional reconciliation approaches begin to fail.
 Common challenges include:
-- Missing or mismatched records
-- Duplicate transactions
-- Manual, slow exception review
-- Poor governance and unclear remediation steps
-- Limited explainability when AI is introduced
-This lab solves those problems by combining:
-- **Rule-based reconciliation**
-- **Event-driven orchestration**
-- **Agentic AI reasoning grounded in policy (RAG)**
-- **Secure, observable, serverless infrastructure**
+- Missing or mismatched records between systems
+- Duplicate transactions caused by partial failures or reprocessing
+- Manual, slow exception review that does not scale
+- Poor governance with unclear ownership and remediation steps
+- Limited explainability when AI is introduced into decision-making
+These issues increase operational risk, reduce trust in data, and make audits and compliance significantly harder.
 
 ### Skills Demonstrated & Learned
 | **Domain**                         | **Skills & Technologies**                                                                                                                                                                                                                                                                                                                                                                   | **Domain**                       | **Skills & Technologies**                                                                                                                                                                                                                                                        |
