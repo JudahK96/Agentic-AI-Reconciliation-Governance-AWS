@@ -27,7 +27,7 @@ These issues increase operational risk, reduce trust in data, and make audits an
 | **Security & IAM**                 | • IAM role design and least-privilege access control<br>• Customer-managed encryption using AWS KMS (SSE-KMS)<br>• Secure service-to-service access patterns<br>• Understanding which services require encryption key access and why<br>• Defense-in-depth security mindset                                                                                                                 | **API & Integration**            | • Designing backend APIs for frontend consumption<br>• Enabling and configuring CORS for browser-based UIs<br>• RESTful endpoint design and query parameter handling<br>• JSON response normalization for UI compatibility<br>• Integration patterns for Angular / SPA frontends |
 | **Observability & Reliability**    | • CloudWatch Logs for distributed debugging<br>• AWS X-Ray tracing for end-to-end request visibility<br>• Step Functions execution monitoring<br>• Error handling, retries, and failure isolation<br>• Operational visibility in agentic workflows                                                                                                                                          | **DevOps & Cost Awareness**      | • Cost-efficient service selection (Athena vs. SageMaker)<br>• Zero-idle-cost serverless architectures<br>• Safe shutdown and resource cleanup practices<br>• Budget awareness and billing guardrails<br>• Designing systems that can scale down to $0                           |
 | **Software Engineering Practices** | • Clean separation of concerns<br>• Defensive programming and validation<br>• JSON schema enforcement<br>• Stateless Lambda function design<br>• Production-oriented error handling                                                                                                                                                                                                         |                                  |                                                                                                                                                                                                                                                                                  |
-### Creating LAB Data
+## Creating LAB Data
 I prompted ChatGPT to create two data csv files: `source_system.csv` & `target_system.csv`
 ```
 | trade_id  | Source (account / date / amount)   | Target (account / date / amount)     | Intentional Data Issue |
@@ -60,12 +60,12 @@ I prompted ChatGPT to create two data csv files: `source_system.csv` & `target_s
 I prompted ChatGPT to create three policiy csv files: `recon-policy.txt`, `data-quality-rules.txt` & `exception-handling-runbook.txt`
 
 
-### Creating S3 Bucket/Uploading Data
+## Creating S3 Bucket/Uploading Data
 Created two s3 Buckets `ai-recon-lab-data-jk-agentic-2026` & `ai-recon-lab-docs-jk-agentic-2026`
 - Enabled Bucket versioning
 - Enable Default Encryption SSE-S3 (will harden security and update to an SSE-KMS)
 
-1. S3 Bucket `ai-recon-lab-data-jk-agentic-2026`
+### 1. S3 Bucket `ai-recon-lab-data-jk-agentic-2026`
   - Created Folders: `incoming/` `processed/` `athena-results/`
   - In the `incoming/` folder created folders `source/` & `target/`
   - Uploaded the `source_system.csv` & `target_system.csv` files to their respective folders
@@ -78,15 +78,46 @@ Created two s3 Buckets `ai-recon-lab-data-jk-agentic-2026` & `ai-recon-lab-docs-
 |----------------------------|----------------------------|----------------------------|
 |<img width="1893" height="714" alt="image" src="https://github.com/user-attachments/assets/7cc8f338-7e04-466a-9659-1570633f7a0b" />|<img width="1918" height="609" alt="image" src="https://github.com/user-attachments/assets/0bc9aaa5-c4ae-4003-824c-0b19dcb174a1" />|<img width="1918" height="604" alt="image" src="https://github.com/user-attachments/assets/f45fb316-3d08-4751-8145-2ba8456761de" />|
 
-2. S3 Bucket `ai-recon-lab-docs-jk-agentic-2026`
+### 2. S3 Bucket `ai-recon-lab-docs-jk-agentic-2026`
   - Created Folders: `policies/`
   - In the `policies/`uploaded created polocy files `recon-policy.txt` `data-quality-rules.txt` `exception-handling-runbook.txt`
 <img width="1893" height="714" alt="image" src="https://github.com/user-attachments/assets/478b7fb7-a55e-47aa-a118-a230a2120e86" />
 
 
-### Folder-scoped S3 layout (`incoming/source/` vs `incoming/target/`)
-**Decision:** Separate data sources into explicit S3 prefixes.
-**Why:**
-- Prevents accidental cross-reading in Athena
-- Mirrors real data lake zone design
-- Improves clarity and governance
+## Create an Athena table
+- Thsis Table is over the CVSs `source_system.csv` & `target_system.csv`
+- Set Athena Query result location to `athena-results/` folder in S3
+<img width="1897" height="495" alt="image" src="https://github.com/user-attachments/assets/4bfd2988-66e8-42ea-b4ef-9e5c6c460a41" />
+
+| Create Database | Point to `source/`| Point to `target/`|
+|----------------------------|----------------------------|----------------------------|
+|```CREATE DATABASE IF NOT EXISTS recon_lab;```
+|```CREATE EXTERNAL TABLE IF NOT EXISTS recon_lab.source_system (
+  trade_id   string,
+  account_id string,
+  trade_date string,
+  amount     double
+)
+ROW FORMAT SERDE 'org.apache.hadoop.hive.serde2.OpenCSVSerde'
+WITH SERDEPROPERTIES (
+  'separatorChar' = ',',
+  'quoteChar'     = '"',
+  'escapeChar'    = '\\'
+)
+LOCATION 's3://recon-lab-data-jk-agentic-2026/incoming/source/'
+TBLPROPERTIES ('skip.header.line.count'='1');```
+|```CREATE EXTERNAL TABLE IF NOT EXISTS recon_lab.target_system (
+  trade_id   string,
+  account_id string,
+  trade_date string,
+  amount     double
+)
+ROW FORMAT SERDE 'org.apache.hadoop.hive.serde2.OpenCSVSerde'
+WITH SERDEPROPERTIES (
+  'separatorChar' = ',',
+  'quoteChar'     = '"',
+  'escapeChar'    = '\\'
+)
+LOCATION 's3://recon-lab-data-jk-agentic-2026/incoming/target/'
+TBLPROPERTIES ('skip.header.line.count'='1');|
+
