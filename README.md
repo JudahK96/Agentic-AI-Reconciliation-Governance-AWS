@@ -160,3 +160,29 @@ These outputs become exception detection backbone
 |<img width="2291" height="1136" alt="image" src="https://github.com/user-attachments/assets/ac07ae62-0807-428c-96b6-e212408ab9d0" />|<img width="920" height="986" alt="image" src="https://github.com/user-attachments/assets/3b265044-26c3-4e68-ad41-7796b9b03c7a" />|
 
 ## Agentic Triage - Step Functions + Lambda + Bedrock
+### Created the Lambda `run_recon_and_write_exceptions`
+  - Lambda Role: `lambda-recon-lab-role`
+    - Permissions: `AmazonS3ReadOnlyAccess` `AmazonAthenaFullAccess` `AmazonDynamoDBFullAccess` `CloudWatchLogsFullAccess` `AmazonBedrockFullAccess`
+    - Inline Policy
+```
+{
+	"Version": "2012-10-17",
+	"Statement": [
+		{
+			"Effect": "Allow",
+			"Action": [
+				"s3:PutObject",
+				"s3:GetBucketLocation"
+			],
+			"Resource": [
+				"arn:aws:s3:::recon-lab-data-jk-agentic-2026",
+				"arn:aws:s3:::recon-lab-data-jk-agentic-2026/*"
+			]
+		}
+	]
+}
+```
+|Environment Variables|Lambda|
+|-|-|
+|<img width="309" height="187" alt="image" src="https://github.com/user-attachments/assets/79cd2467-a118-4359-a29f-ce6c8e968fe1" />|<img width="1226" height="872" alt="image" src="https://github.com/user-attachments/assets/c76cba06-feb7-4fa3-bee8-10578d6affac" />|
+
