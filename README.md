@@ -731,3 +731,21 @@ def lambda_handler(event, context):
 	-  The reconciliation Lambda is deterministic and SQL-driven, while the triage Lambda uses Bedrock with a Knowledge Base for explainability and policy grounding
 - Also Enabled logging + tracing - Monitoring and operations tools/(X-Ray)
 
+## Created Functions State Machine
+1. **RunReconciliation** calls the Lambda `run_recon_and_write_exceptions`, passing in the state input as the payload
+- Saves the Lambda result under `$.recon`. Retries up to **3 times** on common Lambda/Task failures with exponential backoff
+2. **HasExceptions(Choice)** checks whether at least one exception ID exists at `$.recon.Payload.exception_ids[0]`
+- If present - go triage them
+- If not - end successfully
+3. **NoExceptions(Succeed)** ends the workflow if there are no exceptions
+4. **TriageEachException(Map)** iterates over `$.recon.Payload.exception_ids` and, for each `exception_id`, runs triage in parallel with **MaxConcurrency = 5**
+- For each item, it builds a small payload:
+	- `exception_id` = current item
+	- `run_id` = `$.recon.Payload.run_id`
+- Inside (Map):
+	- **AITriage (Task - Lambda invoke)** calls `ai_triage_exception` for that exception and stores each result at `$.triage` within that map item
+	- Retries up to **2 times** with backoff
+	- The overall Map results are stored at `$.triage_results`
+5. **Done (Succeed)** ends successfully after all exception triages finish
+<img width="662" height="817" alt="image" src="https://github.com/user-attachments/assets/2a6bd135-b55e-4b6f-9685-4761fb885e37" />
+
