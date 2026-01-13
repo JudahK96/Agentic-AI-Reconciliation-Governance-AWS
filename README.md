@@ -1111,41 +1111,41 @@ Designed and implemented a secure, event-driven agentic AI system on AWS that pe
 
 Key Design Decisions
 - Athena for reconciliation
-Used Athena because reconciliation is deterministic SQL, not ML. It’s serverless, auditable, cost-efficient, and integrates cleanly with Lambda and Step Functions.
-Signal: I choose the simplest production-grade tool, not ML by default.
+Used Athena because reconciliation is deterministic SQL, not ML. It’s serverless, auditable, cost-efficient, and integrates cleanly with Lambda and Step Functions
+Signal: I choose the simplest production-grade tool, not ML by default
 
 - Clear S3 prefix separation
-Structured data under explicit prefixes (incoming/, processed/, exceptions/) to avoid cross-reading and mirror real data lake zoning.
-Signal: Data hygiene and operational safety.
+Structured data under explicit prefixes (incoming/, processed/, exceptions/) to avoid cross-reading and mirror real data lake zoning
+Signal: Data hygiene and operational safety
 
 - Deterministic vs AI Lambda split
-Separated reconciliation logic from AI triage to keep AI out of the critical path and allow independent scaling, permissions, and cost control.
-Signal: Strong separation of concerns.
+Separated reconciliation logic from AI triage to keep AI out of the critical path and allow independent scaling, permissions, and cost control
+Signal: Strong separation of concerns
 
 - Step Functions orchestration
-Used Step Functions instead of chaining Lambdas for visibility, retries, error handling, and auditable workflows.
-Signal: Enterprise orchestration mindset.
+Used Step Functions instead of chaining Lambdas for visibility, retries, error handling, and auditable workflows
+Signal: Enterprise orchestration mindset
 
 - Agentic AI with Bedrock Knowledge Base (RAG)
-Grounded AI responses in policy and runbooks using Bedrock KB (embeddings + generation), improving trust and explainability.
-Signal: Correct, real-world use of RAG.
+Grounded AI responses in policy and runbooks using Bedrock KB (embeddings + generation), improving trust and explainability
+Signal: Correct, real-world use of RAG
 
 - Explicit AI guardrails
-Added validation to prevent misuse of embedding models for generation, avoiding silent failures and wasted cost.
-Signal: Defensive engineering.
+Added validation to prevent misuse of embedding models for generation, avoiding silent failures and wasted cost
+Signal: Defensive engineering
 
 - DynamoDB for workflow state
-Stored exceptions and AI output in DynamoDB for simple, serverless, encrypted state management and API access.
-Signal: Practical, non-overengineered design.
+Stored exceptions and AI output in DynamoDB for simple, serverless, encrypted state management and API access
+Signal: Practical, non-overengineered design
 
 - HTTP API + CORS
-Chose API Gateway HTTP API for lower cost, lower latency, and frontend-friendly integration.
-Signal: Cost-aware, modern API design.
+Chose API Gateway HTTP API for lower cost, lower latency, and frontend-friendly integration
+Signal: Cost-aware, modern API design
 
 - SSE-KMS with least privilege
-Used a customer-managed KMS key with tightly scoped access to S3, Athena, and Lambda roles only.
-Signal: Security-first, compliance-ready design.
+Used a customer-managed KMS key with tightly scoped access to S3, Athena, and Lambda roles only
+Signal: Security-first, compliance-ready design
 
 - Observability by default
-Enabled CloudWatch logs and tracing to debug distributed and agentic workflows.
-Signal: Production readiness, not just a demo.
+Enabled CloudWatch logs and tracing to debug distributed and agentic workflows
+Signal: Production readiness, not just a demo
