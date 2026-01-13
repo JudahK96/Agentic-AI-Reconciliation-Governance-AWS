@@ -794,7 +794,7 @@ This is an AWS Step Functions state machine that orchestrates a recon + AI triag
 
 |`incoming/EventBridge-Test.csv`|CloudTrial Event History|EventBridge rule invocations|Step Functions `recon-agentic-orchestrator` executed|
 |-|-|-|-|
-|<img width="1894" height="745" alt="image" src="https://github.com/user-attachments/assets/a842b5ea-997e-48ef-a422-ff271696b5be" />|<img width="1918" height="741" alt="image" src="https://github.com/user-attachments/assets/8880bcf5-8169-4dea-a189-7f4e87f047c6" />|<img width="1918" height="1078" alt="image" src="https://github.com/user-attachments/assets/fafb703a-fd43-4196-96b8-a246933b4a4b" />|<img width="1893" height="913" alt="image" src="https://github.com/user-attachments/assets/b46eb419-dc9a-480e-8b29-75453ee77594" />|
+|<img width="1894" height="745" alt="image" src="https://github.com/user-attachments/assets/a842b5ea-997e-48ef-a422-ff271696b5be" />|<img width="1918" height="741" alt="image" src="https://github.com/user-attachments/assets/8880bcf5-8169-4dea-a189-7f4e87f047c6" />|<img width="1918" height="913" alt="image" src="https://github.com/user-attachments/assets/2ec34267-94c4-4caf-aae0-d91368f34e9f" />|<img width="1893" height="913" alt="image" src="https://github.com/user-attachments/assets/b46eb419-dc9a-480e-8b29-75453ee77594" />|
 
 ## Simple API/UI Integration (API Gateway + Lambda)
 - Created `get_exceptions` Lambda
