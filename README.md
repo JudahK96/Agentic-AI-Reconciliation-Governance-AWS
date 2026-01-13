@@ -92,3 +92,11 @@ Created two s3 Buckets `ai-recon-lab-data-jk-agentic-2026` & `ai-recon-lab-docs-
 | Database Creation - Source & Target System External Table | Verify Code Check |
 |------------------------------|------------------------------|
 |<img width="695" height="102" alt="image" src="https://github.com/user-attachments/assets/74508b45-e806-44f3-bb72-7413864858c8" /> <img width="488" height="292" alt="image" src="https://github.com/user-attachments/assets/f32f8c28-069a-4130-ad04-788ea26e2f67" /> <img width="476" height="291" alt="image" src="https://github.com/user-attachments/assets/5899f1a9-016d-42e7-90e1-b28717860189" /> |<img width="661" height="100" alt="image" src="https://github.com/user-attachments/assets/2f4ae8e0-6c74-4332-be2d-8f9fb700912f" /> <img width="1288" height="481" alt="image" src="https://github.com/user-attachments/assets/4f2ec9f8-2cf0-45f5-bc96-4786470c0366" /> <img width="1833" height="789" alt="image" src="https://github.com/user-attachments/assets/b72bc437-61c8-402f-9801-183f5e626909" />|
+
+## Creatin Reconciliation Queries
+These outputs become exception detection backbone
+  - Saved the output files locally aswell 
+| `exceptions_missing_in_target.csv` | `exceptions_amount_mismatches.csv` | `exceptions_duplicates_in_target.csv` |
+|-----------------------------------------|----------------------------------|----------------------------------|
+|<img width="636" height="437" alt="image" src="https://github.com/user-attachments/assets/b7177026-f050-4a45-80da-b55f9772fe3b" />|<img width="628" height="475" alt="image" src="https://github.com/user-attachments/assets/ac5b06d1-d9da-4670-9b1d-7ab440692e08" />|<img width="630" height="397" alt="image" src="https://github.com/user-attachments/assets/e1a3aedd-68fb-46a2-9998-ebc8c1a0d0d6" />|
+
