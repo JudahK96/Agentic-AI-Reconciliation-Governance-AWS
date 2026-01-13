@@ -27,16 +27,45 @@ These issues increase operational risk, reduce trust in data, and make audits an
 | **Security & IAM**                 | • IAM role design and least-privilege access control<br>• Customer-managed encryption using AWS KMS (SSE-KMS)<br>• Secure service-to-service access patterns<br>• Understanding which services require encryption key access and why<br>• Defense-in-depth security mindset                                                                                                                 | **API & Integration**            | • Designing backend APIs for frontend consumption<br>• Enabling and configuring CORS for browser-based UIs<br>• RESTful endpoint design and query parameter handling<br>• JSON response normalization for UI compatibility<br>• Integration patterns for Angular / SPA frontends |
 | **Observability & Reliability**    | • CloudWatch Logs for distributed debugging<br>• AWS X-Ray tracing for end-to-end request visibility<br>• Step Functions execution monitoring<br>• Error handling, retries, and failure isolation<br>• Operational visibility in agentic workflows                                                                                                                                          | **DevOps & Cost Awareness**      | • Cost-efficient service selection (Athena vs. SageMaker)<br>• Zero-idle-cost serverless architectures<br>• Safe shutdown and resource cleanup practices<br>• Budget awareness and billing guardrails<br>• Designing systems that can scale down to $0                           |
 | **Software Engineering Practices** | • Clean separation of concerns<br>• Defensive programming and validation<br>• JSON schema enforcement<br>• Stateless Lambda function design<br>• Production-oriented error handling                                                                                                                                                                                                         |                                  |                                                                                                                                                                                                                                                                                  |
+### Creating LAB Data
+- I prompted Chat GPT to creat two csv files: `source_system.csv` & `target_system.csv`
+| trade_id  | Source (account / date / amount)   | Target (account / date / amount)     | Intentional Data Issue |
+| --------- | ---------------------------------- | ------------------------------------ | ---------------------- |
+| T0001     | ACCT1001 · 2025-12-01 · 1250.50    | ACCT1001 · 2025-12-01 · 1250.50      | —                      |
+| T0002     | ACCT1002 · 2025-12-01 · -300.00    | ACCT1002 · 2025-12-01 · -300.00      | —                      |
+| T0003     | ACCT1003 · 2025-12-02 · 9800.00    | ACCT1003 · 2025-12-02 · 9800.00      | —                      |
+| T0004     | ACCT1001 · 2025-12-02 · 75.25      | ACCT1001 · 2025-12-02 · 75.25        | —                      |
+| **T0005** | ACCT1004 · 2025-12-03 · **450.00** | ACCT1004 · 2025-12-03 · **475.00**   | ⚠️ Amount mismatch     |
+| T0006     | ACCT1005 · 2025-12-03 · 2100.10    | ACCT1005 · 2025-12-03 · 2100.10      | —                      |
+| **T0007** | ACCT1002 · 2025-12-04 · 600.00     | ❌ Missing                            | ⚠️ Missing in target   |
+| T0008     | ACCT1006 · 2025-12-04 · -125.75    | ACCT1006 · 2025-12-04 · -125.75      | —                      |
+| T0009     | ACCT1007 · 2025-12-05 · 3200.00    | ACCT1007 · 2025-12-05 · 3200.00      | —                      |
+| T0010     | ACCT1003 · 2025-12-05 · 150.00     | ACCT1003 · 2025-12-05 · 150.00       | —                      |
+| T0011     | ACCT1008 · 2025-12-06 · 999.99     | ACCT1008 · 2025-12-06 · 999.99       | —                      |
+| **T0012** | ACCT1009 · 2025-12-06 · 5000.00    | ACCT1009 · 2025-12-06 · 5000.00 (×2) | ⚠️ Duplicate in target |
+| T0013     | ACCT1010 · 2025-12-07 · 40.00      | ACCT1010 · 2025-12-07 · 40.00        | —                      |
+| **T0014** | ACCT1005 · 2025-12-07 · -75.00     | ❌ Missing                            | ⚠️ Missing in target   |
+| T0015     | ACCT1001 · 2025-12-08 · 860.00     | ACCT1001 · 2025-12-08 · 860.00       | —                      |
+| T0016     | ACCT1006 · 2025-12-08 · 120.12     | ACCT1006 · 2025-12-08 · 120.12       | —                      |
+| T0017     | ACCT1007 · 2025-12-09 · 2300.00    | ACCT1007 · 2025-12-09 · 2300.00      | —                      |
+| **T0018** | ACCT1002 · 2025-12-09 · **310.00** | ACCT1002 · 2025-12-09 · **295.00**   | ⚠️ Amount mismatch     |
+| T0019     | ACCT1008 · 2025-12-10 · -20.00     | ACCT1008 · 2025-12-10 · -20.00       | —                      |
+| T0020     | ACCT1010 · 2025-12-10 · 7100.00    | ACCT1010 · 2025-12-10 · 7100.00      | —                      |
+
+
 ### Creating S3 Bucket/Uploading Data
 Created two s3 Buckets `ai-recon-lab-data-jk-agentic-2026` & `ai-recon-lab-docs-jk-agentic-2026`
 - Enabled Bucket versioning
 - Enable Default Encryption SSE-S3 (whill harden security and update to an SSE-KMS)
 
-S3 Bucket **ai-recon-lab-data-jk-agentic-2026**
+S3 Bucket `ai-recon-lab-data-jk-agentic-2026`
 - Created Folders: `incoming/` `processed/` `athena-results/`
+- In the `incoming/` folder created folders `source/` & `target/`
 
-S3 Bucket **ai-recon-lab-docs-jk-agentic-2026**
+
+S3 Bucket `ai-recon-lab-docs-jk-agentic-2026`
 - Created Folders: `policies/`
+- In the `policies/`uploaded created polocy files `recon-policy.txt` `data-quality-rules.txt` `exception-handling-runbook.txt`
 
 
 
