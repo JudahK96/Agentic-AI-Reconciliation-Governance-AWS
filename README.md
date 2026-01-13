@@ -117,8 +117,18 @@ These outputs become exception detection backbone
   - Sorted results by creation time
 
 <img width="1851" height="421" alt="image" src="https://github.com/user-attachments/assets/0c5021a9-b177-4af2-98ab-e5ee4ca09b3b" />
+
 ***Now I can ask questions like this:***
 - “Show me **all AMOUNT_MISMATCH** exceptions”
 - “Show me **all MISSING_IN_TARGET** exceptions”
 - “Show me **duplicates from today**”
 
+
+## Created Knowledge Base for Policy + Runbooks
+### Created `recon-kb` 
+- Synced with `ai-recon-lab-docs-jk-agentic-2026` S3 Bucket prefix `policies/` folder storing `recon-policy.txt`, `data-quality-rules.txt` & `exception-handling-runbook.txt` files
+- Sedicated prefix `policies/` gives:
+  - Auditability: In a real recon workflow, policy + procedure docs are part of the control environment. Keeping them in S3 mirrors that
+  - Clear governance + separation: policies/runbooks live in one place, separate from raw recon data `incoming/source/` & `incoming/target/`
+  - Simple Updates since the policy files can be added or versioned and Sync with the Knowledge Base
+ 
