@@ -923,5 +923,36 @@ def lambda_handler(event, context):
 </details>
 
 - Environment Variable Configuration: add DynamoDB table as a value for the DDB_TABLE key
-- <img width="1623" height="709" alt="image" src="https://github.com/user-attachments/assets/fd89edd3-bd2b-4071-9e10-7783b37ef18c" />
+<img width="1623" height="709" alt="image" src="https://github.com/user-attachments/assets/fd89edd3-bd2b-4071-9e10-7783b37ef18c" />
+### Test 
+```
+{
+  "version": "2.0",
+  "routeKey": "GET /exceptions",
+  "rawPath": "/exceptions",
+  "queryStringParameters": { "limit": "10" }
+}
+```
+<img width="1617" height="1075" alt="image" src="https://github.com/user-attachments/assets/32b05e67-2c45-41f3-80fc-051cfbe16e95" />
+Confirmed statusCode: 200 and a JSON body containing count and items were returned
 
+### Created the API Gateway
+- Build a HTTP API
+	- integrate the `get_exceptions` Lambda
+	- Configure routes:
+    1. Add route:
+        - Method: `GET`
+        - Path: `/exceptions`
+        - Integration: `get_exceptions`
+    2. (Optional but useful for browsers) add an OPTIONS route:
+        - Method: `OPTIONS`
+        - Path: `/exceptions`
+        	- HTTP API can handle CORS without this, but adding CORS in the API is cleaner
+           <img width="551" height="296" alt="image" src="https://github.com/user-attachments/assets/bb7e27e6-72ec-48eb-9af6-fbf197126f6a" />
+		   My UI calls an HTTP API. The API Gateway route GET /exceptions integrates with a Lambda called get_exceptions , which reads DynamoDB and returns JSON
+
+|Turn on CORS|Test Endpoint `prod/exeption`|
+|-|-|
+|Angular UI can call it<img width="1639" height="482" alt="image" src="https://github.com/user-attachments/assets/abf26137-c2e2-460f-b5b3-a38aed6a2ef7" />|<img width="1275" height="1393" alt="image" src="https://github.com/user-attachments/assets/ee73b745-d8dd-4be4-8cdf-a16ce0bdb95f" />|
+
+## Observability with CloudWatch + X-Ray
