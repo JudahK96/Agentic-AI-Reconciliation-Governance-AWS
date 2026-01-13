@@ -12,7 +12,12 @@ Common challenges include:
 - Manual, slow exception review that does not scale
 - Poor governance with unclear ownership and remediation steps
 - Limited explainability when AI is introduced into decision-making
-These issues increase operational risk, reduce trust in data, and make audits and compliance significantly harder.
+
+These issues increase operational risk, reduce trust in data, and make audits and compliance significantly harder. This lab solves those problems by combining:
+- **Rule-based reconciliation**
+- **Event-driven orchestration**
+- **Agentic AI reasoning grounded in policy (RAG)**
+- **Secure, observable, serverless infrastructure**
 
 ### Skills Demonstrated & Learned
 | **Domain**                         | **Skills & Technologies**                                                                                                                                                                                                                                                                                                                                                                   | **Domain**                       | **Skills & Technologies**                                                                                                                                                                                                                                                        |
