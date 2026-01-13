@@ -744,14 +744,24 @@ This is an AWS Step Functions state machine that orchestrates a recon + AI triag
 
 ## Trigger workflow on new uploads with EventBridge
 # - Create Event Bridge Rule
-| Code | Target | Role Perms |
-|---|---|---|
-| <pre><code>{
+
+## EventBridge Rule → Step Functions Trigger
+```
+## EventBridge Rule → Step Functions Trigger
+
+| EventBridge Rule (Targets) | IAM Policy (Invoke Step Functions) | Event Pattern |
+|---------------------------|-------------------------------------|---------------|
+| ![EventBridge Targets](./d0c50342-a777-4551-a6e2-49b55f2c96a1.png) | ![IAM Policy](./73ac0882-8ac1-409b-9307-cf42915923f0.png) | ```json
+{
   "source": ["aws.s3"],
   "detail-type": ["AWS API Call via CloudTrail"],
   "detail": {
     "eventSource": ["s3.amazonaws.com"],
-    "eventName": ["PutObject", "CompleteMultipartUpload", "CopyObject"],
+    "eventName": [
+      "PutObject",
+      "CompleteMultipartUpload",
+      "CopyObject"
+    ],
     "requestParameters": {
       "bucketName": ["recon-lab-data-jk-agentic-2026"],
       "key": [{
@@ -759,4 +769,9 @@ This is an AWS Step Functions state machine that orchestrates a recon + AI triag
       }]
     }
   }
-}</code></pre> | <img width="1459" height="808" alt="EventBridge target" src="https://github.com/user-attachments/assets/419197a2-2c8e-4085-8bb7-80e559b9b97b" /><br>We target the Step Function `recon-agentic-orchestrator`. | <img width="1458" height="847" alt="EventBridge role permissions" src="https://github.com/user-attachments/assets/762081e4-d126-4ca4-86ef-bb81983037f4" /><br>• Check the role has `states:StartExecution` on your state machine ARN.<br>• If the rule fires but Step Functions doesn’t start, it’s almost always this permission. |
+}
+```
+|Target the Step Function recon-agentic-orchestrator|Role has `states:StartExecution` perms on state machine ARN|
+|-|-|
+|<img width="1459" height="808" alt="image" src="https://github.com/user-attachments/assets/70d11bfa-f243-4472-9962-f4d30eb82ff8" />|<img width="1458" height="847" alt="image" src="https://github.com/user-attachments/assets/4b01f871-5bfe-45e9-891e-b11dcc77dac7" />|
+
