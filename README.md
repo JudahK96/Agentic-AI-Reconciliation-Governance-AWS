@@ -958,9 +958,23 @@ Confirmed statusCode: 200 and a JSON body containing count and items were return
 ## Observability with CloudWatch + X-Ray
 Each Lambda need AWS Tracing enabled
 - Give the `lambda-recon-lab-role` X-Ray permissions with ***AWSXRayDaemonWriteAccess***
+
 |`get_exceptions`|`run_recon_and_write_exceptions`|`ai_triage_exceptions`|
 |-|-|-|
 |<img width="1609" height="1079" alt="image" src="https://github.com/user-attachments/assets/89ce67ee-9021-45d6-ac6a-c8ca52425ec9" />|<img width="1606" height="1089" alt="image" src="https://github.com/user-attachments/assets/e7fad1bb-4bf1-4c93-9f0c-901885de5bee" />|<img width="1609" height="1092" alt="image" src="https://github.com/user-attachments/assets/10d149e6-7291-4bf1-8155-c22ae67b8097" />|
+
+### Test CloudWatch incoming triggers 
+1. Triggered the Step Functioon state machine buloading new files into S3 `incoming/` folder
+	<img width="2555" height="692" alt="image" src="https://github.com/user-attachments/assets/85329c78-128d-4782-8877-080684c56a29" />
+	<img width="2557" height="785" alt="image" src="https://github.com/user-attachments/assets/10ff08e0-a9b3-4461-88cf-b07e1beba511" />
+	<img width="1836" height="1258" alt="image" src="https://github.com/user-attachments/assets/0a136b70-adfe-40e3-96ac-4928b721d3b3" />
+
+2. Called the API route GET/exceptions test another log
+	<img width="2556" height="774" alt="image" src="https://github.com/user-attachments/assets/53e7b8f4-ba68-4b1f-adef-2623a14997a9" />
+	<img width="2558" height="800" alt="image" src="https://github.com/user-attachments/assets/bb6efa5a-7994-46cf-84d8-a2cc0e88353c" />
+
+## Hardening Security implamenting SSE-KMS
+
 
 
 
