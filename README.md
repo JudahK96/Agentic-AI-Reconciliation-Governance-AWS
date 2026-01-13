@@ -754,7 +754,10 @@ This is an AWS Step Functions state machine that orchestrates a recon + AI triag
 ## Trigger workflow on new uploads with EventBridge
 - Create Event Bridge Rule
 ### EventBridge Rule - Step Functions Trigger
-```
+<details>
+<summary><strong>EventBridge event pattern – S3 incoming/uploads code (click to expand)</strong></summary>
+
+<pre><code class="language-json">
 {
   "source": ["aws.s3"],
   "detail-type": ["AWS API Call via CloudTrail"],
@@ -763,13 +766,19 @@ This is an AWS Step Functions state machine that orchestrates a recon + AI triag
     "eventName": ["PutObject", "CompleteMultipartUpload", "CopyObject"],
     "requestParameters": {
       "bucketName": ["recon-lab-data-jk-agentic-2026"],
-      "key": [{
-        "prefix": "incoming/"
-      }]
+      "key": [
+        {
+          "prefix": "incoming/"
+        }
+      ]
     }
   }
 }
-```
+</code></pre>
+
+</details>
+
+
 |Target the Step Function recon-agentic-orchestrator|Role has `states:StartExecution` perms on state machine ARN|
 |-|-|
 |<img width="1459" height="808" alt="image" src="https://github.com/user-attachments/assets/70d11bfa-f243-4472-9962-f4d30eb82ff8" />|<img width="1458" height="847" alt="image" src="https://github.com/user-attachments/assets/4b01f871-5bfe-45e9-891e-b11dcc77dac7" />|
