@@ -968,6 +968,8 @@ Each Lambda need AWS Tracing enabled
 	<img width="2555" height="692" alt="image" src="https://github.com/user-attachments/assets/85329c78-128d-4782-8877-080684c56a29" />
 	<img width="2557" height="785" alt="image" src="https://github.com/user-attachments/assets/10ff08e0-a9b3-4461-88cf-b07e1beba511" />
 	<img width="1836" height="1258" alt="image" src="https://github.com/user-attachments/assets/0a136b70-adfe-40e3-96ac-4928b721d3b3" />
+<img width="220" height="181" alt="image" src="https://github.com/user-attachments/assets/76015cfb-621c-417c-aeb5-bbc770b1f747" />
+
 
 2. Called the API route GET/exceptions test another log
 	<img width="2556" height="774" alt="image" src="https://github.com/user-attachments/assets/53e7b8f4-ba68-4b1f-adef-2623a14997a9" />
