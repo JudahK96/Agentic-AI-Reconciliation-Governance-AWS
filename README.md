@@ -743,25 +743,15 @@ This is an AWS Step Functions state machine that orchestrates a recon + AI triag
 | **Visual Flow** | <img width="662" height="817" alt="Step Functions workflow" src="https://github.com/user-attachments/assets/2a6bd135-b55e-4b6f-9685-4761fb885e37" /> |
 
 ## Trigger workflow on new uploads with EventBridge
-# - Create Event Bridge Rule
-
-## EventBridge Rule → Step Functions Trigger
+- Create Event Bridge Rule
+### EventBridge Rule - Step Functions Trigger
 ```
-## EventBridge Rule → Step Functions Trigger
-
-| EventBridge Rule (Targets) | IAM Policy (Invoke Step Functions) | Event Pattern |
-|---------------------------|-------------------------------------|---------------|
-| ![EventBridge Targets](./d0c50342-a777-4551-a6e2-49b55f2c96a1.png) | ![IAM Policy](./73ac0882-8ac1-409b-9307-cf42915923f0.png) | ```json
 {
   "source": ["aws.s3"],
   "detail-type": ["AWS API Call via CloudTrail"],
   "detail": {
     "eventSource": ["s3.amazonaws.com"],
-    "eventName": [
-      "PutObject",
-      "CompleteMultipartUpload",
-      "CopyObject"
-    ],
+    "eventName": ["PutObject", "CompleteMultipartUpload", "CopyObject"],
     "requestParameters": {
       "bucketName": ["recon-lab-data-jk-agentic-2026"],
       "key": [{
@@ -775,3 +765,15 @@ This is an AWS Step Functions state machine that orchestrates a recon + AI triag
 |-|-|
 |<img width="1459" height="808" alt="image" src="https://github.com/user-attachments/assets/70d11bfa-f243-4472-9962-f4d30eb82ff8" />|<img width="1458" height="847" alt="image" src="https://github.com/user-attachments/assets/4b01f871-5bfe-45e9-891e-b11dcc77dac7" />|
 
+### Setting up CloudTrail
+|recon-lab-cloudtrail|Data Events|
+|-|-|
+|<img width="1894" height="724" alt="image" src="https://github.com/user-attachments/assets/60b707fc-b7c2-4b3f-a239-10b7d2575440" />|<img width="1857" height="681" alt="image" src="https://github.com/user-attachments/assets/5e731f64-b295-43d1-8859-675457f34a15" />|
+- Data event type - S3
+- Object-level API activity - Write(Leave Read unchecked(Write triggers on uploads))
+### Testing Event Bridge Trigger
+- Upload a file to S3 Bucket folder `incoming/EventBridge-Test.csv`
+
+|`incoming/EventBridge-Test.csv`|CloudTrial Event History|EventBridge rule invocations|Step Functions `recon-agentic-orchestrator` executed|
+|-|-|-|-|
+|<img width="1894" height="745" alt="image" src="https://github.com/user-attachments/assets/a842b5ea-997e-48ef-a422-ff271696b5be" />|<img width="1918" height="741" alt="image" src="https://github.com/user-attachments/assets/8880bcf5-8169-4dea-a189-7f4e87f047c6" />|<img width="1918" height="1078" alt="image" src="https://github.com/user-attachments/assets/fafb703a-fd43-4196-96b8-a246933b4a4b" />|<img width="1893" height="913" alt="image" src="https://github.com/user-attachments/assets/b46eb419-dc9a-480e-8b29-75453ee77594" />|
