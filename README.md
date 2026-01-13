@@ -956,3 +956,10 @@ Confirmed statusCode: 200 and a JSON body containing count and items were return
 |Angular UI can call it<img width="1639" height="482" alt="image" src="https://github.com/user-attachments/assets/abf26137-c2e2-460f-b5b3-a38aed6a2ef7" />|<img width="1275" height="1393" alt="image" src="https://github.com/user-attachments/assets/ee73b745-d8dd-4be4-8cdf-a16ce0bdb95f" />|
 
 ## Observability with CloudWatch + X-Ray
+Each Lambda need AWS Tracing enabled
+|`get_exceptions`|`run_recon_and_write_exceptions`|`ai_triage_exceptions`|
+|-|-|-|
+|<img width="1609" height="1079" alt="image" src="https://github.com/user-attachments/assets/89ce67ee-9021-45d6-ac6a-c8ca52425ec9" />|<img width="1606" height="1089" alt="image" src="https://github.com/user-attachments/assets/e7fad1bb-4bf1-4c93-9f0c-901885de5bee" />|<img width="1609" height="1092" alt="image" src="https://github.com/user-attachments/assets/10d149e6-7291-4bf1-8155-c22ae67b8097" />|
+
+
+
