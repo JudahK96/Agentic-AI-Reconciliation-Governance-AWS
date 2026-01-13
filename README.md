@@ -182,7 +182,552 @@ These outputs become exception detection backbone
 	]
 }
 ```
+```
+import os
+import json
+import time
+import uuid
+import logging
+from datetime import datetime, timezone, timedelta
+
+import boto3
+from botocore.exceptions import ClientError
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
+athena = boto3.client("athena")
+ddb = boto3.resource("dynamodb")
+
+
+def _env(name: str, default: str | None = None) -> str:
+    v = os.environ.get(name, default)
+    if v is None or str(v).strip() == "":
+        raise ValueError(f"Missing required environment variable: {name}")
+    return v.strip()
+
+
+def _utc_now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _ttl_epoch_days(days: int) -> int:
+    # DynamoDB TTL expects epoch seconds (int)
+    expire_at = datetime.now(timezone.utc) + timedelta(days=days)
+    return int(expire_at.timestamp())
+
+
+def _start_athena_query(sql: str, database: str, output_s3: str) -> str:
+    resp = athena.start_query_execution(
+        QueryString=sql,
+        QueryExecutionContext={"Database": database},
+        ResultConfiguration={"OutputLocation": output_s3},
+    )
+    return resp["QueryExecutionId"]
+
+
+def _wait_for_query(qid: str, max_poll_seconds: int, poll_interval_seconds: int) -> None:
+    deadline = time.time() + max_poll_seconds
+    while True:
+        resp = athena.get_query_execution(QueryExecutionId=qid)
+        state = resp["QueryExecution"]["Status"]["State"]
+        if state in ("SUCCEEDED", "FAILED", "CANCELLED"):
+            if state != "SUCCEEDED":
+                reason = resp["QueryExecution"]["Status"].get("StateChangeReason", "Unknown")
+                raise RuntimeError(f"Athena query {qid} ended with state={state}. Reason={reason}")
+            return
+
+        if time.time() > deadline:
+            raise TimeoutError(f"Timed out waiting for Athena query {qid} after {max_poll_seconds}s")
+
+        time.sleep(poll_interval_seconds)
+
+
+def _get_all_results(qid: str) -> list[list[str]]:
+    """
+    Returns rows as a list of list-of-strings (already trimmed).
+    The first row is the header row, matching Athena behavior.
+    """
+    rows: list[list[str]] = []
+    next_token = None
+
+    while True:
+        kwargs = {"QueryExecutionId": qid, "MaxResults": 1000}
+        if next_token:
+            kwargs["NextToken"] = next_token
+
+        resp = athena.get_query_results(**kwargs)
+        for r in resp["ResultSet"]["Rows"]:
+            # Each datum may have VarCharValue; missing values return {}
+            rows.append([d.get("VarCharValue", "") for d in r.get("Data", [])])
+
+        next_token = resp.get("NextToken")
+        if not next_token:
+            break
+
+    return rows
+
+
+def _rows_to_dicts(rows: list[list[str]]) -> list[dict]:
+    """
+    Converts Athena result rows into a list of dicts using the header row.
+    Skips the header.
+    """
+    if not rows:
+        return []
+    header = rows[0]
+    out = []
+    for r in rows[1:]:
+        item = {}
+        for i, col in enumerate(header):
+            if col == "":
+                continue
+            item[col] = r[i] if i < len(r) else ""
+        out.append(item)
+    return out
+
+
+def _put_exception_items(
+    table_name: str,
+    exception_type: str,
+    records: list[dict],
+    run_id: str,
+    ttl_days: int | None,
+) -> int:
+    table = ddb.Table(table_name)
+    created_at = _utc_now_iso()
+
+    ttl_epoch = _ttl_epoch_days(ttl_days) if ttl_days and ttl_days > 0 else None
+
+    written = 0
+    with table.batch_writer(overwrite_by_pkeys=["exception_id"]) as batch:
+        for rec in records:
+            exception_id = str(uuid.uuid4())
+            trade_id = rec.get("trade_id") or rec.get("TRADE_ID") or rec.get("tradeid") or ""
+
+            item = {
+                "exception_id": exception_id,
+                "exception_type": exception_type,
+                "trade_id": trade_id,
+                "status": "OPEN",
+                "created_at": created_at,
+                "run_id": run_id,
+                "details_json": json.dumps(rec, ensure_ascii=False),
+            }
+            if ttl_epoch is not None:
+                item["ttl_epoch"] = ttl_epoch
+
+            batch.put_item(Item=item)
+            written += 1
+
+    return written
+
+
+def lambda_handler(event, context):
+    # ----- Load config -----
+    database = _env("ATHENA_DATABASE")
+    output_s3 = _env("ATHENA_OUTPUT_S3")
+    source_table = _env("SOURCE_TABLE")
+    target_table = _env("TARGET_TABLE")
+    ddb_table = _env("DDB_TABLE")
+
+    max_poll_seconds = int(os.environ.get("MAX_POLL_SECONDS", "90"))
+    poll_interval_seconds = int(os.environ.get("POLL_INTERVAL_SECONDS", "2"))
+
+    ttl_days_raw = os.environ.get("EXCEPTION_TTL_DAYS")
+    ttl_days = int(ttl_days_raw) if ttl_days_raw and ttl_days_raw.strip().isdigit() else None
+
+    # Correlation / run id (useful for Step Functions + logs)
+    run_id = event.get("run_id") if isinstance(event, dict) else None
+    if not run_id:
+        run_id = context.aws_request_id if context else str(uuid.uuid4())
+
+    logger.info("Starting reconciliation run_id=%s database=%s source=%s target=%s",
+                run_id, database, source_table, target_table)
+
+    # ----- Define reconciliation SQL -----
+    sql_missing_in_target = f"""
+    SELECT s.trade_id, s.account_id, s.trade_date, CAST(s.amount AS varchar) AS source_amount
+    FROM {database}.{source_table} s
+    LEFT JOIN {database}.{target_table} t
+      ON s.trade_id = t.trade_id
+    WHERE t.trade_id IS NULL
+    """
+
+    sql_amount_mismatch = f"""
+    SELECT s.trade_id,
+           s.account_id,
+           s.trade_date,
+           CAST(s.amount AS varchar) AS source_amount,
+           CAST(t.amount AS varchar) AS target_amount
+    FROM {database}.{source_table} s
+    JOIN {database}.{target_table} t
+      ON s.trade_id = t.trade_id
+    WHERE s.amount <> t.amount
+    """
+
+    sql_duplicates_in_target = f"""
+    SELECT trade_id, CAST(COUNT(*) AS varchar) AS cnt
+    FROM {database}.{target_table}
+    GROUP BY trade_id
+    HAVING COUNT(*) > 1
+    """
+
+    queries = [
+        ("MISSING_IN_TARGET", sql_missing_in_target),
+        ("AMOUNT_MISMATCH", sql_amount_mismatch),
+        ("DUPLICATE_IN_TARGET", sql_duplicates_in_target),
+    ]
+
+    summary = {
+        "run_id": run_id,
+        "written": {},
+        "athena_query_ids": {},
+        "database": database,
+        "source_table": source_table,
+        "target_table": target_table,
+        "ddb_table": ddb_table,
+        "timestamp_utc": _utc_now_iso(),
+    }
+
+    # ----- Execute queries + write exceptions -----
+    for exception_type, sql in queries:
+        try:
+            logger.info("Starting Athena query for %s", exception_type)
+            qid = _start_athena_query(sql, database=database, output_s3=output_s3)
+            summary["athena_query_ids"][exception_type] = qid
+
+            _wait_for_query(qid, max_poll_seconds=max_poll_seconds, poll_interval_seconds=poll_interval_seconds)
+
+            raw_rows = _get_all_results(qid)
+            records = _rows_to_dicts(raw_rows)
+
+            logger.info("Athena results %s rows=%d", exception_type, len(records))
+
+            written = _put_exception_items(
+                table_name=ddb_table,
+                exception_type=exception_type,
+                records=records,
+                run_id=run_id,
+                ttl_days=ttl_days,
+            )
+            summary["written"][exception_type] = written
+
+        except Exception as e:
+            logger.exception("Failed processing exception_type=%s error=%s", exception_type, str(e))
+            summary["written"][exception_type] = 0
+            summary.setdefault("errors", []).append(
+                {"exception_type": exception_type, "error": str(e)}
+            )
+
+    logger.info("Reconciliation complete. Summary: %s", json.dumps(summary))
+    return summary
+```
 |Environment Variables|Lambda|
 |-|-|
 |<img width="309" height="187" alt="image" src="https://github.com/user-attachments/assets/79cd2467-a118-4359-a29f-ce6c8e968fe1" />|<img width="1226" height="872" alt="image" src="https://github.com/user-attachments/assets/c76cba06-feb7-4fa3-bee8-10578d6affac" />|
+Purpose:
+- Runs Athena reconciliation queries (missing, mismatched, duplicates)
+- Writes normalized "exceptions" into DynamoDB
+How it works:
+1. Starts Athena queries
+2. Polls until each query finishes
+3. Reads results
+4. Writes items to DynamoDB with consistent fields
+- In General Config I increased the Increased Memory to 256MB & Timeout to 15sec, to stop the throttoling and memeory buffering issue that was syoping the Lambda from executing.
+
+### Created the Lambda `ai_triage_exception`
+```
+import os
+import json
+import logging
+from datetime import datetime, timezone
+
+import boto3
+from botocore.exceptions import ClientError
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
+ddb = boto3.resource("dynamodb")
+
+# Bedrock Agent Runtime is what Knowledge Bases use
+bedrock_kb = boto3.client("bedrock-agent-runtime")
+
+
+def _env(name: str, default: str | None = None) -> str:
+    v = os.environ.get(name, default)
+    if v is None or str(v).strip() == "":
+        raise ValueError(f"Missing required environment variable: {name}")
+    return v.strip()
+
+
+def _utc_now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _safe_json_loads(s: str):
+    try:
+        return json.loads(s)
+    except Exception:
+        return None
+
+
+def _get_exception_item(table_name: str, exception_id: str) -> dict:
+    table = ddb.Table(table_name)
+    resp = table.get_item(Key={"exception_id": exception_id})
+    item = resp.get("Item")
+    if not item:
+        raise KeyError(f"Exception not found in DynamoDB: exception_id={exception_id}")
+    return item
+
+
+def _build_prompt(exception_item: dict) -> str:
+    """
+    Keep prompt very explicit so the model returns clean JSON.
+    We also include a minimal "system-like" instruction in the user prompt
+    because retrieve_and_generate doesn't support a true system role.
+    """
+    details = exception_item.get("details_json", "{}")
+    parsed_details = _safe_json_loads(details) if isinstance(details, str) else details
+    if parsed_details is None:
+        parsed_details = {"raw_details_json": details}
+
+    # Minimal fields
+    payload = {
+        "exception_id": exception_item.get("exception_id", ""),
+        "exception_type": exception_item.get("exception_type", ""),
+        "trade_id": exception_item.get("trade_id", ""),
+        "status": exception_item.get("status", ""),
+        "run_id": exception_item.get("run_id", ""),
+        "details": parsed_details,
+    }
+
+    # Output schema we want
+    desired_schema = {
+        "severity": "LOW | MEDIUM | HIGH | CRITICAL",
+        "summary": "1-3 sentences describing what happened and why it matters",
+        "recommended_actions": [
+            "Action 1",
+            "Action 2"
+        ],
+        "root_cause_hypotheses": [
+            "Hypothesis 1",
+            "Hypothesis 2"
+        ],
+        "policy_citations": [
+            {
+                "title": "document title if known",
+                "reason": "why this doc/rule applies"
+            }
+        ]
+    }
+
+    return (
+        "You are a data governance and reconciliation assistant.\n"
+        "Use ONLY the provided policy/runbook knowledge from retrieval results.\n"
+        "If policy is missing, say so and provide best-practice guidance.\n\n"
+        "TASK:\n"
+        "1) Classify severity.\n"
+        "2) Explain the exception.\n"
+        "3) Propose concrete next actions for resolution.\n"
+        "4) Provide root-cause hypotheses.\n"
+        "5) Cite which policy/runbook guidance applies.\n\n"
+        "IMPORTANT OUTPUT RULES:\n"
+        "- Return STRICT JSON only. No markdown, no extra keys, no prose outside JSON.\n"
+        f"- Use this exact JSON shape:\n{json.dumps(desired_schema, indent=2)}\n\n"
+        f"EXCEPTION INPUT:\n{json.dumps(payload, indent=2)}\n"
+    )
+
+
+def _call_kb_retrieve_and_generate(knowledge_base_id: str, model_arn: str, prompt: str) -> dict:
+    temperature = float(os.environ.get("TEMPERATURE", "0.2"))
+    max_tokens = int(os.environ.get("MAX_TOKENS", "700"))
+    top_p = float(os.environ.get("TOP_P", "0.9"))
+
+    # retrieveAndGenerate API
+    # Note: Some accounts/regions may have slightly different model ARN formats.
+    resp = bedrock_kb.retrieve_and_generate(
+        input={"text": prompt},
+        retrieveAndGenerateConfiguration={
+            "type": "KNOWLEDGE_BASE",
+            "knowledgeBaseConfiguration": {
+                "knowledgeBaseId": knowledge_base_id,
+                "modelArn": model_arn,
+                "generationConfiguration": {
+                    "inferenceConfig": {
+                        "textInferenceConfig": {
+                            "temperature": temperature,
+                            "maxTokens": max_tokens,
+                            "topP": top_p,
+                        }
+                    }
+                },
+                # retrievalConfiguration can be added later for tuning (topK, filters, etc.)
+            },
+        },
+    )
+    return resp
+
+
+def _extract_generation_text(resp: dict) -> str:
+    # Bedrock KB returns output.text
+    out = resp.get("output", {})
+    txt = out.get("text", "")
+    return txt.strip() if isinstance(txt, str) else ""
+
+
+def _extract_policy_citations(resp: dict) -> list[dict]:
+    """
+    The KB response includes citations that map generated text spans to retrieved references.
+    We store a simplified set so you can show it in a portfolio demo without drowning in fields.
+    """
+    citations = resp.get("citations", []) or []
+    simplified = []
+
+    for c in citations:
+        # Each citation may include retrievedReferences; structure can vary.
+        refs = c.get("retrievedReferences", []) or []
+        for r in refs:
+            loc = r.get("location", {}) or {}
+            meta = r.get("metadata", {}) or {}
+
+            # Try to pull something readable
+            title = meta.get("title") or meta.get("source") or meta.get("file_name") or "reference"
+            uri = None
+
+            # Some locations include s3Location or webLocation etc.
+            if "s3Location" in loc:
+                uri = loc["s3Location"].get("uri")
+            elif "webLocation" in loc:
+                uri = loc["webLocation"].get("url")
+
+            simplified.append(
+                {
+                    "title": str(title),
+                    "uri": uri,
+                    "snippet": (r.get("content", {}) or {}).get("text", "")[:300],
+                }
+            )
+
+    # De-dupe by (title, uri)
+    seen = set()
+    unique = []
+    for s in simplified:
+        key = (s.get("title"), s.get("uri"))
+        if key not in seen:
+            seen.add(key)
+            unique.append(s)
+    return unique
+
+
+def _update_exception_with_ai(
+    table_name: str,
+    exception_id: str,
+    ai_payload: dict,
+    citations: list[dict],
+    model_arn: str,
+) -> None:
+    table = ddb.Table(table_name)
+    now = _utc_now_iso()
+
+    # Store fields; keep it flat and query-friendly
+    severity = ai_payload.get("severity", "UNKNOWN")
+    summary = ai_payload.get("summary", "")
+    recommended_actions = ai_payload.get("recommended_actions", [])
+    root_causes = ai_payload.get("root_cause_hypotheses", [])
+    policy_citations = ai_payload.get("policy_citations", [])
+
+    table.update_item(
+        Key={"exception_id": exception_id},
+        UpdateExpression=(
+            "SET ai_severity = :sev, "
+            "ai_summary = :sum, "
+            "ai_recommendation = :rec, "
+            "ai_root_causes_json = :rc, "
+            "ai_policy_citations_json = :pc, "
+            "ai_kb_references_json = :kbrefs, "
+            "last_triaged_at = :ts, "
+            "triage_model = :model"
+        ),
+        ExpressionAttributeValues={
+            ":sev": severity,
+            ":sum": summary,
+            ":rec": json.dumps(recommended_actions, ensure_ascii=False),
+            ":rc": json.dumps(root_causes, ensure_ascii=False),
+            ":pc": json.dumps(policy_citations, ensure_ascii=False),
+            ":kbrefs": json.dumps(citations, ensure_ascii=False),
+            ":ts": now,
+            ":model": model_arn,
+        },
+    )
+
+
+def lambda_handler(event, context):
+    table_name = _env("DDB_TABLE")
+    kb_id = _env("KNOWLEDGE_BASE_ID")
+    model_arn = _env("MODEL_ARN")
+
+    logger.info("Event received: %s", json.dumps(event))
+
+    # Determine exception_id
+    exception_id = None
+    if isinstance(event, dict):
+        exception_id = event.get("exception_id")
+
+    if not exception_id:
+        raise ValueError("Missing exception_id in event")
+
+    # Either use passed-in item or load from DynamoDB
+    exception_item = event if (isinstance(event, dict) and event.get("details_json")) else None
+    if not exception_item:
+        exception_item = _get_exception_item(table_name, exception_id)
+
+    prompt = _build_prompt(exception_item)
+
+    # Call Bedrock KB (RAG)
+    resp = _call_kb_retrieve_and_generate(knowledge_base_id=kb_id, model_arn=model_arn, prompt=prompt)
+
+    generated_text = _extract_generation_text(resp)
+    citations = _extract_policy_citations(resp)
+
+    # Parse model JSON output
+    ai_payload = _safe_json_loads(generated_text)
+    if ai_payload is None:
+        # If the model returned non-JSON, store it safely in a fallback structure
+        ai_payload = {
+            "severity": "UNKNOWN",
+            "summary": "Model did not return valid JSON. See raw output.",
+            "recommended_actions": [],
+            "root_cause_hypotheses": [],
+            "policy_citations": [],
+            "raw_output": generated_text[:4000],
+        }
+
+    # Write results back
+    _update_exception_with_ai(
+        table_name=table_name,
+        exception_id=exception_id,
+        ai_payload=ai_payload,
+        citations=citations,
+        model_arn=model_arn,
+    )
+
+    result = {
+        "exception_id": exception_id,
+        "ai_severity": ai_payload.get("severity", "UNKNOWN"),
+        "last_triaged_at": _utc_now_iso(),
+        "kb_reference_count": len(citations),
+    }
+
+    logger.info("Triage complete: %s", json.dumps(result))
+    return result
+```
+|Environment Variables|Lambda|
+|-|-|
+|<img width="295" height="216" alt="image" src="https://github.com/user-attachments/assets/cb8505fd-6fb2-4775-a6d6-f23e11d6d912" />|<img width="1609" height="860" alt="image" src="https://github.com/user-attachments/assets/cfdb9a3f-11b0-42f1-83da-3f73fa2ab2b6" />|
+- Purpose:
+-  Separates reconciliation logic from AI reasoning, each function has isolated configuration and permissions
+	-  The reconciliation Lambda is deterministic and SQL-driven, while the triage Lambda uses Bedrock with a Knowledge Base for explainability and policy grounding
+- Also Enabled logging + tracing - Monitoring and operations tools/(X-Ray)
 
