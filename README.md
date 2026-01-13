@@ -164,25 +164,34 @@ These outputs become exception detection backbone
   - Lambda Role: `lambda-recon-lab-role`
     - Permissions: `AmazonS3ReadOnlyAccess` `AmazonAthenaFullAccess` `AmazonDynamoDBFullAccess` `CloudWatchLogsFullAccess` `AmazonBedrockFullAccess`
     - Inline Policy
-```
+<details>
+<summary><strong>S3 IAM policy (click to expand)</strong></summary>
+
+<pre><code class="language-json">
 {
-	"Version": "2012-10-17",
-	"Statement": [
-		{
-			"Effect": "Allow",
-			"Action": [
-				"s3:PutObject",
-				"s3:GetBucketLocation"
-			],
-			"Resource": [
-				"arn:aws:s3:::recon-lab-data-jk-agentic-2026",
-				"arn:aws:s3:::recon-lab-data-jk-agentic-2026/*"
-			]
-		}
-	]
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:PutObject",
+        "s3:GetBucketLocation"
+      ],
+      "Resource": [
+        "arn:aws:s3:::recon-lab-data-jk-agentic-2026",
+        "arn:aws:s3:::recon-lab-data-jk-agentic-2026/*"
+      ]
+    }
+  ]
 }
-```
-```
+</code></pre>
+
+</details>
+
+<details>
+<summary><strong> lambda-recon-lab-role code (click to expand)</strong></summary>
+
+<pre><code class="language-python">
 import os
 import json
 import time
@@ -342,8 +351,10 @@ def lambda_handler(event, context):
     if not run_id:
         run_id = context.aws_request_id if context else str(uuid.uuid4())
 
-    logger.info("Starting reconciliation run_id=%s database=%s source=%s target=%s",
-                run_id, database, source_table, target_table)
+    logger.info(
+        "Starting reconciliation run_id=%s database=%s source=%s target=%s",
+        run_id, database, source_table, target_table
+    )
 
     # ----- Define reconciliation SQL -----
     sql_missing_in_target = f"""
@@ -363,14 +374,14 @@ def lambda_handler(event, context):
     FROM {database}.{source_table} s
     JOIN {database}.{target_table} t
       ON s.trade_id = t.trade_id
-    WHERE s.amount <> t.amount
+    WHERE s.amount &lt;&gt; t.amount
     """
 
     sql_duplicates_in_target = f"""
     SELECT trade_id, CAST(COUNT(*) AS varchar) AS cnt
     FROM {database}.{target_table}
     GROUP BY trade_id
-    HAVING COUNT(*) > 1
+    HAVING COUNT(*) &gt; 1
     """
 
     queries = [
@@ -397,7 +408,11 @@ def lambda_handler(event, context):
             qid = _start_athena_query(sql, database=database, output_s3=output_s3)
             summary["athena_query_ids"][exception_type] = qid
 
-            _wait_for_query(qid, max_poll_seconds=max_poll_seconds, poll_interval_seconds=poll_interval_seconds)
+            _wait_for_query(
+                qid,
+                max_poll_seconds=max_poll_seconds,
+                poll_interval_seconds=poll_interval_seconds,
+            )
 
             raw_rows = _get_all_results(qid)
             records = _rows_to_dicts(raw_rows)
@@ -422,7 +437,11 @@ def lambda_handler(event, context):
 
     logger.info("Reconciliation complete. Summary: %s", json.dumps(summary))
     return summary
-```
+</code></pre>
+
+</details>
+
+
 |Environment Variables|Lambda|
 |-|-|
 |<img width="309" height="187" alt="image" src="https://github.com/user-attachments/assets/79cd2467-a118-4359-a29f-ce6c8e968fe1" />|<img width="1226" height="872" alt="image" src="https://github.com/user-attachments/assets/c76cba06-feb7-4fa3-bee8-10578d6affac" />|
@@ -437,7 +456,10 @@ How it works:
 - In General Config I increased the Increased Memory to 256MB & Timeout to 15sec, to stop the throttoling and memeory buffering issue that was syoping the Lambda from executing.
 
 ### Created the Lambda `ai_triage_exception`
-```
+<details>
+<summary><strong>Lambda – Bedrock Knowledge Base exception triage (click to expand)</strong></summary>
+
+<pre><code class="language-python">
 import os
 import json
 import logging
@@ -493,7 +515,6 @@ def _build_prompt(exception_item: dict) -> str:
     if parsed_details is None:
         parsed_details = {"raw_details_json": details}
 
-    # Minimal fields
     payload = {
         "exception_id": exception_item.get("exception_id", ""),
         "exception_type": exception_item.get("exception_type", ""),
@@ -503,7 +524,6 @@ def _build_prompt(exception_item: dict) -> str:
         "details": parsed_details,
     }
 
-    # Output schema we want
     desired_schema = {
         "severity": "LOW | MEDIUM | HIGH | CRITICAL",
         "summary": "1-3 sentences describing what happened and why it matters",
@@ -545,8 +565,6 @@ def _call_kb_retrieve_and_generate(knowledge_base_id: str, model_arn: str, promp
     max_tokens = int(os.environ.get("MAX_TOKENS", "700"))
     top_p = float(os.environ.get("TOP_P", "0.9"))
 
-    # retrieveAndGenerate API
-    # Note: Some accounts/regions may have slightly different model ARN formats.
     resp = bedrock_kb.retrieve_and_generate(
         input={"text": prompt},
         retrieveAndGenerateConfiguration={
@@ -563,7 +581,6 @@ def _call_kb_retrieve_and_generate(knowledge_base_id: str, model_arn: str, promp
                         }
                     }
                 },
-                # retrievalConfiguration can be added later for tuning (topK, filters, etc.)
             },
         },
     )
@@ -571,32 +588,24 @@ def _call_kb_retrieve_and_generate(knowledge_base_id: str, model_arn: str, promp
 
 
 def _extract_generation_text(resp: dict) -> str:
-    # Bedrock KB returns output.text
     out = resp.get("output", {})
     txt = out.get("text", "")
     return txt.strip() if isinstance(txt, str) else ""
 
 
 def _extract_policy_citations(resp: dict) -> list[dict]:
-    """
-    The KB response includes citations that map generated text spans to retrieved references.
-    We store a simplified set so you can show it in a portfolio demo without drowning in fields.
-    """
     citations = resp.get("citations", []) or []
     simplified = []
 
     for c in citations:
-        # Each citation may include retrievedReferences; structure can vary.
         refs = c.get("retrievedReferences", []) or []
         for r in refs:
             loc = r.get("location", {}) or {}
             meta = r.get("metadata", {}) or {}
 
-            # Try to pull something readable
             title = meta.get("title") or meta.get("source") or meta.get("file_name") or "reference"
             uri = None
 
-            # Some locations include s3Location or webLocation etc.
             if "s3Location" in loc:
                 uri = loc["s3Location"].get("uri")
             elif "webLocation" in loc:
@@ -610,7 +619,6 @@ def _extract_policy_citations(resp: dict) -> list[dict]:
                 }
             )
 
-    # De-dupe by (title, uri)
     seen = set()
     unique = []
     for s in simplified:
@@ -631,7 +639,6 @@ def _update_exception_with_ai(
     table = ddb.Table(table_name)
     now = _utc_now_iso()
 
-    # Store fields; keep it flat and query-friendly
     severity = ai_payload.get("severity", "UNKNOWN")
     summary = ai_payload.get("summary", "")
     recommended_actions = ai_payload.get("recommended_actions", [])
@@ -670,7 +677,6 @@ def lambda_handler(event, context):
 
     logger.info("Event received: %s", json.dumps(event))
 
-    # Determine exception_id
     exception_id = None
     if isinstance(event, dict):
         exception_id = event.get("exception_id")
@@ -678,23 +684,23 @@ def lambda_handler(event, context):
     if not exception_id:
         raise ValueError("Missing exception_id in event")
 
-    # Either use passed-in item or load from DynamoDB
     exception_item = event if (isinstance(event, dict) and event.get("details_json")) else None
     if not exception_item:
         exception_item = _get_exception_item(table_name, exception_id)
 
     prompt = _build_prompt(exception_item)
 
-    # Call Bedrock KB (RAG)
-    resp = _call_kb_retrieve_and_generate(knowledge_base_id=kb_id, model_arn=model_arn, prompt=prompt)
+    resp = _call_kb_retrieve_and_generate(
+        knowledge_base_id=kb_id,
+        model_arn=model_arn,
+        prompt=prompt,
+    )
 
     generated_text = _extract_generation_text(resp)
     citations = _extract_policy_citations(resp)
 
-    # Parse model JSON output
     ai_payload = _safe_json_loads(generated_text)
     if ai_payload is None:
-        # If the model returned non-JSON, store it safely in a fallback structure
         ai_payload = {
             "severity": "UNKNOWN",
             "summary": "Model did not return valid JSON. See raw output.",
@@ -704,7 +710,6 @@ def lambda_handler(event, context):
             "raw_output": generated_text[:4000],
         }
 
-    # Write results back
     _update_exception_with_ai(
         table_name=table_name,
         exception_id=exception_id,
@@ -722,7 +727,11 @@ def lambda_handler(event, context):
 
     logger.info("Triage complete: %s", json.dumps(result))
     return result
-```
+</code></pre>
+
+</details>
+
+
 |Environment Variables|Lambda|
 |-|-|
 |<img width="295" height="216" alt="image" src="https://github.com/user-attachments/assets/cb8505fd-6fb2-4775-a6d6-f23e11d6d912" />|<img width="1609" height="860" alt="image" src="https://github.com/user-attachments/assets/cfdb9a3f-11b0-42f1-83da-3f73fa2ab2b6" />|
