@@ -1099,6 +1099,7 @@ Each Lambda need AWS Tracing enabled
 - Locked down orchestration by allowing Step Functions to invoke only the specific Lambda functions used in the state machine
 
 ## Flow Overview
+Designed and implemented a secure, event-driven agentic AI system on AWS that performs data reconciliation, applies governance policies via RAG, and exposes AI-enriched exceptions through a production-ready API
 1. CSV files are uploaded to S3 (`incoming/source/` and `incoming/target/`)
 2. An S3 event triggers EventBridge
 3. EventBridge starts a Step Functions state machine
@@ -1107,3 +1108,44 @@ Each Lambda need AWS Tracing enabled
 6. An AI triage agent (Amazon Bedrock + Knowledge Base) explains and classifies each exception
 7. Results are written back to DynamoDB
 8. An HTTP API exposes AI-enriched exceptions for a UI (e.g., Angular)
+
+Key Design Decisions
+- Athena for reconciliation
+Used Athena because reconciliation is deterministic SQL, not ML. It’s serverless, auditable, cost-efficient, and integrates cleanly with Lambda and Step Functions.
+Signal: I choose the simplest production-grade tool, not ML by default.
+
+- Clear S3 prefix separation
+Structured data under explicit prefixes (incoming/, processed/, exceptions/) to avoid cross-reading and mirror real data lake zoning.
+Signal: Data hygiene and operational safety.
+
+- Deterministic vs AI Lambda split
+Separated reconciliation logic from AI triage to keep AI out of the critical path and allow independent scaling, permissions, and cost control.
+Signal: Strong separation of concerns.
+
+- Step Functions orchestration
+Used Step Functions instead of chaining Lambdas for visibility, retries, error handling, and auditable workflows.
+Signal: Enterprise orchestration mindset.
+
+- Agentic AI with Bedrock Knowledge Base (RAG)
+Grounded AI responses in policy and runbooks using Bedrock KB (embeddings + generation), improving trust and explainability.
+Signal: Correct, real-world use of RAG.
+
+- Explicit AI guardrails
+Added validation to prevent misuse of embedding models for generation, avoiding silent failures and wasted cost.
+Signal: Defensive engineering.
+
+- DynamoDB for workflow state
+Stored exceptions and AI output in DynamoDB for simple, serverless, encrypted state management and API access.
+Signal: Practical, non-overengineered design.
+
+- HTTP API + CORS
+Chose API Gateway HTTP API for lower cost, lower latency, and frontend-friendly integration.
+Signal: Cost-aware, modern API design.
+
+- SSE-KMS with least privilege
+Used a customer-managed KMS key with tightly scoped access to S3, Athena, and Lambda roles only.
+Signal: Security-first, compliance-ready design.
+
+- Observability by default
+Enabled CloudWatch logs and tracing to debug distributed and agentic workflows.
+Signal: Production readiness, not just a demo.
