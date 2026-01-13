@@ -126,9 +126,25 @@ These outputs become exception detection backbone
 
 ## Created Knowledge Base for Policy + Runbooks
 ### Created `recon-kb` 
-- Synced with `ai-recon-lab-docs-jk-agentic-2026` S3 Bucket prefix `policies/` folder storing `recon-policy.txt`, `data-quality-rules.txt` & `exception-handling-runbook.txt` files
-- Sedicated prefix `policies/` gives:
+1. Synced with `ai-recon-lab-docs-jk-agentic-2026` S3 Bucket prefix `policies/` folder storing `recon-policy.txt`, `data-quality-rules.txt` & `exception-handling-runbook.txt` files
+- Dedicated prefix `policies/` gives:
   - Auditability: In a real recon workflow, policy + procedure docs are part of the control environment. Keeping them in S3 mirrors that
   - Clear governance + separation: policies/runbooks live in one place, separate from raw recon data `incoming/source/` & `incoming/target/`
   - Simple Updates since the policy files can be added or versioned and Sync with the Knowledge Base
+2.  I chose a vector stro for the KB as the `policies/` folder stored unstructured data. In the files they describe: ***match keys (trade_id, account_id), tolerances (amount thresholds), exception handling (missing records, late arrivals), escalation rules / SLA***
+    - That kind of content is not best handled by structured store KBs (which are for database/table semantic querying)
+      - In other words: **Structured KB** = “search inside tables” & **Vector store KB** = “search inside documents”
+3. I went with OpenSearch Serverless because it works cleanly with Bedrock KBs and it’s a standard integration path
+  - It stores my embeddings and has fast retrieval to return the top relevant chunks quickly.
+  - It was less infrastructure work since I don’t need to size clusters, manage nodes, or think hard about scaling since it's a lab
+4. I started with default chunking to keep the pipeline stable and reproducible, then planned to tune chunking only if retrieval quality tests showed consistent misses
+  -   Policies already read like sections headings, bullets, procedures; so default chunking usually captures those units well enough
+  -   It avoids over-tuning too early; custom chunking can accidentally split key definitions from their context, or create chunks that are too big and dilute relevance
+  -   My lab goal was for reliable retrieval, not chunk optimization research, although in hindsight I should have read the files ChatGPT created for my policies. They weere too short which made the default chunking too large as you will see in the testing
+5. I used Amazon Nova Micro for this lab as I wanted very low cost text generation and didn't need multimodal inputs
+  - Lowest-cost text generation model** on AWS
+  - Text-only foundation model optimized for speed and cost
+  - Great for tasks like summarization, classification, translation, simple chat, brainstorming, and lightweight reasoning
+  - Very low per-token cost — around *$0.0000175 per 1,000 input tokens* and *$0.00007 per 1,000 output tokens* (batch mode) — roughly the cheapest in the Nova family
  
+## Agentic Triage - Step Functions + Lambda + Bedrock
