@@ -968,15 +968,131 @@ Each Lambda need AWS Tracing enabled
 	<img width="2555" height="692" alt="image" src="https://github.com/user-attachments/assets/85329c78-128d-4782-8877-080684c56a29" />
 	<img width="2557" height="785" alt="image" src="https://github.com/user-attachments/assets/10ff08e0-a9b3-4461-88cf-b07e1beba511" />
 	<img width="1836" height="1258" alt="image" src="https://github.com/user-attachments/assets/0a136b70-adfe-40e3-96ac-4928b721d3b3" />
-<img width="220" height="181" alt="image" src="https://github.com/user-attachments/assets/76015cfb-621c-417c-aeb5-bbc770b1f747" />
-
+![Nice Smack](https://media.tenor.com/KMxrZ-A6ev4AAAAM/nice-smack.gif)
 
 2. Called the API route GET/exceptions test another log
 	<img width="2556" height="774" alt="image" src="https://github.com/user-attachments/assets/53e7b8f4-ba68-4b1f-adef-2623a14997a9" />
 	<img width="2558" height="800" alt="image" src="https://github.com/user-attachments/assets/bb6efa5a-7994-46cf-84d8-a2cc0e88353c" />
 
 ## Hardening Security implamenting SSE-KMS
+- Edit S3 Bucket Encryption to SSE-KMS
+<img width="2216" height="600" alt="image" src="https://github.com/user-attachments/assets/76f225fe-a544-432b-aae1-45dc65fac95b" />
+- Created `recon-lab-s3-key` SSE-KMS key access
 
+| Principal                 | Needs KMS Access? | Why                                      |
+|---------------------------|------------------|-------------------------------------------|
+| S3 service                | ✅ Yes           | Encrypt/decrypt objects                   |
+| Lambda execution role     | ✅ Yes           | Read encrypted S3 objects                 |
+| Athena service            | ✅ Yes           | Query encrypted data + write results      |
+| You (admin/user)          | ✅ Yes           | Access + troubleshooting                 |
+| Step Functions            | ❌ No            | Orchestration only                        |
+| EventBridge               | ❌ No            | Event routing                             |
+| API Gateway               | ❌ No            | HTTP only                                 |
+| DynamoDB                  | ❌ No            | Separate encryption system                |
 
+### Test Upload to `incoming/` folder with `test.txt`
+<img width="1994" height="391" alt="image" src="https://github.com/user-attachments/assets/5b119f2e-cf98-44e8-a7df-ad833b310148" />
+
+***File uploaded with Server-side encryption settings***
+
+<img width="2073" height="1329" alt="image" src="https://github.com/user-attachments/assets/649afdc6-9511-4dca-a851-398b1355a861" />
+
+***StepFunction executed from the Lambda firing off; meaning the permissions are correct***
+
+- Now that I know the pipeline works and is secured I can harden the security by **deny uploads unless encrypted with KMS and your CMK**
+	- Appied only after confirming the pipeline writes with SSE-KMS—otherwise it would block my Lambdas
+
+### `lambda-recon-lab-role` least-privilege IAM policy
+<details>
+<summary><strong>IAM policy – S3 pipeline + KMS + logging (click to expand)</strong></summary>
+
+<pre><code class="language-json">
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ListOnlyPipelinePrefixes",
+      "Effect": "Allow",
+      "Action": "s3:ListBucket",
+      "Resource": "arn:aws:s3:::recon-lab-data-jk-agentic-2026",
+      "Condition": {
+        "ForAnyValue:StringLike": {
+          "s3:prefix": [
+            "incoming/*",
+            "processed/*",
+            "exceptions/*"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "ReadWriteOnlyPipelineObjects",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::recon-lab-data-jk-agentic-2026/incoming/*",
+        "arn:aws:s3:::recon-lab-data-jk-agentic-2026/processed/*",
+        "arn:aws:s3:::recon-lab-data-jk-agentic-2026/exceptions/*"
+      ]
+    },
+    {
+      "Sid": "DeleteOnlyIfYourPipelineNeedsIt",
+      "Effect": "Allow",
+      "Action": "s3:DeleteObject",
+      "Resource": [
+        "arn:aws:s3:::recon-lab-data-jk-agentic-2026/incoming/*",
+        "arn:aws:s3:::recon-lab-data-jk-agentic-2026/processed/*",
+        "arn:aws:s3:::recon-lab-data-jk-agentic-2026/exceptions/*"
+      ]
+    },
+    {
+      "Sid": "AllowUseOfOnlyThisKmsKeyForS3Objects",
+      "Effect": "Allow",
+      "Action": [
+        "kms:Encrypt",
+        "kms:Decrypt",
+        "kms:ReEncrypt*",
+        "kms:GenerateDataKey*",
+        "kms:DescribeKey"
+      ],
+      "Resource": "arn:aws:kms:us-east-1:065841603703:key/a27edcfe-725b-4595-8aa5-70b0592e3c42"
+    },
+    {
+      "Sid": "LambdaCloudWatchLogs",
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+</code></pre>
+
+</details>
+### Step Functions role policy (invoke ONLY your 3 Lambdas ###
+
+```
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "InvokeOnlyReconWorkflowLambdas",
+      "Effect": "Allow",
+      "Action": "lambda:InvokeFunction",
+      "Resource": [
+        "arn:aws:lambda:us-east-1:065841603703:function:ai_triage_exception",
+        "arn:aws:lambda:us-east-1:065841603703:function:get_exceptions",
+        "arn:aws:lambda:us-east-1:065841603703:function:run_recon_and_write_exceptions"
+      ]
+    }
+  ]
+}
+```
 
 
