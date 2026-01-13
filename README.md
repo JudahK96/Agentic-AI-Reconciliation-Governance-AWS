@@ -138,13 +138,25 @@ These outputs become exception detection backbone
   - It stores my embeddings and has fast retrieval to return the top relevant chunks quickly.
   - It was less infrastructure work since I don’t need to size clusters, manage nodes, or think hard about scaling since it's a lab
 4. I started with default chunking to keep the pipeline stable and reproducible, then planned to tune chunking only if retrieval quality tests showed consistent misses
-  -   Policies already read like sections headings, bullets, procedures; so default chunking usually captures those units well enough
-  -   It avoids over-tuning too early; custom chunking can accidentally split key definitions from their context, or create chunks that are too big and dilute relevance
-  -   My lab goal was for reliable retrieval, not chunk optimization research, although in hindsight I should have read the files ChatGPT created for my policies. They weere too short which made the default chunking too large as you will see in the testing
+  - Policies already read like sections headings, bullets, procedures; so default chunking usually captures those units well enough
+  - It avoids over-tuning too early; custom chunking can accidentally split key definitions from their context, or create chunks that are too big and dilute relevance
+  - My lab goal was for reliable retrieval, not chunk optimization research, although in hindsight I should have read the files ChatGPT created for my policies. They weere too short which made the default chunking too large as you will see in the testing
 5. I used Amazon Nova Micro for this lab as I wanted very low cost text generation and didn't need multimodal inputs
   - Lowest-cost text generation model** on AWS
   - Text-only foundation model optimized for speed and cost
   - Great for tasks like summarization, classification, translation, simple chat, brainstorming, and lightweight reasoning
   - Very low per-token cost — around *$0.0000175 per 1,000 input tokens* and *$0.00007 per 1,000 output tokens* (batch mode) — roughly the cheapest in the Nova family
- 
+
+### Testing KB
+- Upload a Snippet of the data I got back from DynamoDB/Athena
+```
+"trade_id","account_id","trade_date","source_amount","target_amount"
+"T0005","ACCT1004","2025-12-03","450.0","475.0"
+"T0018","ACCT1002","2025-12-09","310.0","295.0"
+```
+
+|recon_kb|More Results|
+|-----------------------------------------|----------------------------------|
+|<img width="2291" height="1136" alt="image" src="https://github.com/user-attachments/assets/ac07ae62-0807-428c-96b6-e212408ab9d0" />|<img width="920" height="986" alt="image" src="https://github.com/user-attachments/assets/3b265044-26c3-4e68-ad41-7796b9b03c7a" />|
+
 ## Agentic Triage - Step Functions + Lambda + Bedrock
