@@ -795,3 +795,133 @@ This is an AWS Step Functions state machine that orchestrates a recon + AI triag
 |`incoming/EventBridge-Test.csv`|CloudTrial Event History|EventBridge rule invocations|Step Functions `recon-agentic-orchestrator` executed|
 |-|-|-|-|
 |<img width="1894" height="745" alt="image" src="https://github.com/user-attachments/assets/a842b5ea-997e-48ef-a422-ff271696b5be" />|<img width="1918" height="741" alt="image" src="https://github.com/user-attachments/assets/8880bcf5-8169-4dea-a189-7f4e87f047c6" />|<img width="1918" height="1078" alt="image" src="https://github.com/user-attachments/assets/fafb703a-fd43-4196-96b8-a246933b4a4b" />|<img width="1893" height="913" alt="image" src="https://github.com/user-attachments/assets/b46eb419-dc9a-480e-8b29-75453ee77594" />|
+
+## Simple API/UI Integration (API Gateway + Lambda)
+- Created `get_exceptions` Lambda
+	- used previous role: `lambda-recon-lab-role`
+
+<details>
+<summary><strong>Lambda – get_exceptions code (click to expand)</strong></summary>
+
+<pre><code class="language-python">
+import json
+
+def lambda_handler(event, context):
+    # TODO implement
+    return {
+        'statusCode': 200,
+        'body': json.dumps('Hello from Lambda!')
+    }
+import os
+import json
+import logging
+import boto3
+from boto3.dynamodb.conditions import Key, Attr
+from datetime import datetime, timezone
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
+ddb = boto3.resource("dynamodb")
+
+
+def _env(name: str, default: str | None = None) -> str:
+    v = os.environ.get(name, default)
+    if v is None or str(v).strip() == "":
+        raise ValueError(f"Missing required environment variable: {name}")
+    return v.strip()
+
+
+def _to_int(s: str, default: int) -> int:
+    try:
+        return int(s)
+    except Exception:
+        return default
+
+
+def _cors_headers():
+    # Even if you enable CORS in API Gateway HTTP API, returning these headers
+    # makes local tests and some tooling smoother.
+    return {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET,OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type,Authorization",
+        "Content-Type": "application/json",
+    }
+
+
+def lambda_handler(event, context):
+    """
+    Expects to be called by API Gateway HTTP API (proxy integration).
+    Supports query params:
+      - status=OPEN|RESOLVED|...
+      - limit=1..200 (default 25)
+      - exception_type=MISSING_IN_TARGET|AMOUNT_MISMATCH|DUPLICATE_IN_TARGET (optional)
+
+    Returns: { items: [...], count: N }
+    """
+    table_name = _env("DDB_TABLE")
+    table = ddb.Table(table_name)
+
+    logger.info("Event: %s", json.dumps(event))
+
+    # Handle preflight OPTIONS (usually API Gateway does this, but safe)
+    if event.get("requestContext", {}).get("http", {}).get("method") == "OPTIONS":
+        return {"statusCode": 204, "headers": _cors_headers(), "body": ""}
+
+    params = event.get("queryStringParameters") or {}
+    status = params.get("status")
+    exception_type = params.get("exception_type")
+    limit = _to_int(params.get("limit", "25"), 25)
+    limit = max(1, min(limit, 200))  # clamp for safety
+
+    # ---- Scan approach (simple, works without indexes) ----
+    # For small lab datasets this is fine.
+    filter_expr = None
+    if status:
+        filter_expr = Attr("status").eq(status)
+    if exception_type:
+        et_expr = Attr("exception_type").eq(exception_type)
+        filter_expr = et_expr if filter_expr is None else (filter_expr & et_expr)
+
+    scan_kwargs = {"Limit": limit}
+    if filter_expr is not None:
+        scan_kwargs["FilterExpression"] = filter_expr
+
+    resp = table.scan(**scan_kwargs)
+    items = resp.get("Items", [])
+
+    # Sort newest first if created_at exists (best effort)
+    def sort_key(x):
+        return x.get("created_at", "")
+
+    items.sort(key=sort_key, reverse=True)
+
+    # Optionally, parse details_json from string into object for nicer UI
+    for it in items:
+        dj = it.get("details_json")
+        if isinstance(dj, str):
+            try:
+                it["details"] = json.loads(dj)
+            except Exception:
+                it["details"] = {"raw_details_json": dj}
+
+    body = {
+        "count": len(items),
+        "items": items,
+        "next_token": resp.get("LastEvaluatedKey"),  # for pagination later
+        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+    }
+
+    return {
+        "statusCode": 200,
+        "headers": _cors_headers(),
+        "body": json.dumps(body, ensure_ascii=False),
+    }
+</code></pre>
+
+</details>
+
+- Environment Variable Configuration: add DynamoDB table as a value for the DDB_TABLE key
+- <img width="1623" height="709" alt="image" src="https://github.com/user-attachments/assets/fd89edd3-bd2b-4071-9e10-7783b37ef18c" />
+
