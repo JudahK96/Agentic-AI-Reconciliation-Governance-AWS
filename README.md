@@ -28,7 +28,8 @@ These issues increase operational risk, reduce trust in data, and make audits an
 | **Observability & Reliability**    | • CloudWatch Logs for distributed debugging<br>• AWS X-Ray tracing for end-to-end request visibility<br>• Step Functions execution monitoring<br>• Error handling, retries, and failure isolation<br>• Operational visibility in agentic workflows                                                                                                                                          | **DevOps & Cost Awareness**      | • Cost-efficient service selection (Athena vs. SageMaker)<br>• Zero-idle-cost serverless architectures<br>• Safe shutdown and resource cleanup practices<br>• Budget awareness and billing guardrails<br>• Designing systems that can scale down to $0                           |
 | **Software Engineering Practices** | • Clean separation of concerns<br>• Defensive programming and validation<br>• JSON schema enforcement<br>• Stateless Lambda function design<br>• Production-oriented error handling                                                                                                                                                                                                         |                                  |                                                                                                                                                                                                                                                                                  |
 ### Creating LAB Data
-- I prompted Chat GPT to creat two csv files: `source_system.csv` & `target_system.csv`
+I prompted ChatGPT to create two data csv files: `source_system.csv` & `target_system.csv`
+```
 | trade_id  | Source (account / date / amount)   | Target (account / date / amount)     | Intentional Data Issue |
 | --------- | ---------------------------------- | ------------------------------------ | ---------------------- |
 | T0001     | ACCT1001 · 2025-12-01 · 1250.50    | ACCT1001 · 2025-12-01 · 1250.50      | —                      |
@@ -51,7 +52,13 @@ These issues increase operational risk, reduce trust in data, and make audits an
 | **T0018** | ACCT1002 · 2025-12-09 · **310.00** | ACCT1002 · 2025-12-09 · **295.00**   | ⚠️ Amount mismatch     |
 | T0019     | ACCT1008 · 2025-12-10 · -20.00     | ACCT1008 · 2025-12-10 · -20.00       | —                      |
 | T0020     | ACCT1010 · 2025-12-10 · 7100.00    | ACCT1010 · 2025-12-10 · 7100.00      | —                      |
+```
+- Intentional issues in `target_system.csv`:
+  - **Missing trade_ids:** `T0007`, `T0014`
+  - **Amount mismatches:** `T0005` (450.00 → 475.00), `T0018` (310.00 → 295.00)
+  - **Duplicate row:** `T0012` appears twice (exact duplicate)
 
+I prompted ChatGPT to create three policiy csv files: `recon-policy.txt`, `data-quality-rules.txt` & `exception-handling-runbook.txt`
 
 ### Creating S3 Bucket/Uploading Data
 Created two s3 Buckets `ai-recon-lab-data-jk-agentic-2026` & `ai-recon-lab-docs-jk-agentic-2026`
