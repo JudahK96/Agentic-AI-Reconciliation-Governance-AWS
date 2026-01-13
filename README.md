@@ -69,7 +69,10 @@ Created two s3 Buckets `ai-recon-lab-data-jk-agentic-2026` & `ai-recon-lab-docs-
   - Created Folders: `incoming/` `processed/` `athena-results/`
   - In the `incoming/` folder created folders `source/` & `target/`
   - Uploaded the `source_system.csv` & `target_system.csv` files to their respective folders
-    - Adding both CSVs in the same `incoming/`folder(no sub-folder), Athena will read both unless you separate them; so it’s better to create subfolders and point each table to its folder
+    - Prevents accidental cross-reading in Athena
+    - Mirrors real data lake zone design
+    - Improves clarity and governance
+    - ***Adding both CSVs in the same `incoming/`folder(no sub-folder), Athena will read both unless you separate them; so it’s better to create subfolders and point each table to its folder***
 
 | `ai-recon-lab-data-jk-agentic-2026`| `source/`| `target/`|
 |----------------------------|----------------------------|----------------------------|
