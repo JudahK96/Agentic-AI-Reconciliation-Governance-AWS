@@ -457,7 +457,7 @@ How it works:
 
 ### Created the Lambda `ai_triage_exception`
 <details>
-<summary><strong>Lambda – Bedrock Knowledge Base exception triage (click to expand)</strong></summary>
+<summary><strong>Lambda – ai_triage_exception code (click to expand)</strong></summary>
 
 <pre><code class="language-python">
 import os
