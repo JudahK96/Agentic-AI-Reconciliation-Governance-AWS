@@ -84,7 +84,7 @@ Created two s3 Buckets `ai-recon-lab-data-jk-agentic-2026` & `ai-recon-lab-docs-
 <img width="1893" height="714" alt="image" src="https://github.com/user-attachments/assets/478b7fb7-a55e-47aa-a118-a230a2120e86" />
 
 
-## Create an Athena table
+## Created an Athena table
 - Thsis Table is over the CVSs `source_system.csv` & `target_system.csv`
 - Set Athena Query result location to `athena-results/` folder in S3
 <img width="1897" height="495" alt="image" src="https://github.com/user-attachments/assets/4bfd2988-66e8-42ea-b4ef-9e5c6c460a41" />
@@ -93,10 +93,32 @@ Created two s3 Buckets `ai-recon-lab-data-jk-agentic-2026` & `ai-recon-lab-docs-
 |------------------------------|------------------------------|
 |<img width="695" height="102" alt="image" src="https://github.com/user-attachments/assets/74508b45-e806-44f3-bb72-7413864858c8" /> <img width="488" height="292" alt="image" src="https://github.com/user-attachments/assets/f32f8c28-069a-4130-ad04-788ea26e2f67" /> <img width="476" height="291" alt="image" src="https://github.com/user-attachments/assets/5899f1a9-016d-42e7-90e1-b28717860189" /> |<img width="661" height="100" alt="image" src="https://github.com/user-attachments/assets/2f4ae8e0-6c74-4332-be2d-8f9fb700912f" /> <img width="1288" height="481" alt="image" src="https://github.com/user-attachments/assets/4f2ec9f8-2cf0-45f5-bc96-4786470c0366" /> <img width="1833" height="789" alt="image" src="https://github.com/user-attachments/assets/b72bc437-61c8-402f-9801-183f5e626909" />|
 
-## Creatin Reconciliation Queries
+### Created Reconciliation Queries
 These outputs become exception detection backbone
-  - Saved the output files locally aswell 
+  - Saved the output files locally aswell
+
 | `exceptions_missing_in_target.csv` | `exceptions_amount_mismatches.csv` | `exceptions_duplicates_in_target.csv` |
 |-----------------------------------------|----------------------------------|----------------------------------|
 |<img width="636" height="437" alt="image" src="https://github.com/user-attachments/assets/b7177026-f050-4a45-80da-b55f9772fe3b" />|<img width="628" height="475" alt="image" src="https://github.com/user-attachments/assets/ac5b06d1-d9da-4670-9b1d-7ab440692e08" />|<img width="630" height="397" alt="image" src="https://github.com/user-attachments/assets/e1a3aedd-68fb-46a2-9998-ebc8c1a0d0d6" />|
+
+## Storing exceptions in DynamoDB
+- Created DynamoDB Table: `recon_exceptions`
+  - Partition Key: `exception_id`
+    - Type: Sting
+<img width="1893" height="340" alt="image" src="https://github.com/user-attachments/assets/9dcf831f-a3cc-464e-8384-42ca99b59138" />
+
+***By default, DynamoDB can only efficiently answer questions like: “Give me the exception with ID = X”***
+- That's not enough for a reconciliation workflow. At the moment I could only Query efficiently by `exception_id`, any other attributes required a scan
+-  So I added a Global Secondary Index (GSI) `by_type` to make asking secondary questions cheaper
+
+  ***The main table optimizes point lookups by exception ID, while the GSI enables operational and audit queries by exception type and time without scans***
+  - All exceptions of a given type
+  - Exceptions of a type within a time range
+  - Sorted results by creation time
+
+<img width="1851" height="421" alt="image" src="https://github.com/user-attachments/assets/0c5021a9-b177-4af2-98ab-e5ee4ca09b3b" />
+***Now I can ask questions like this:***
+- “Show me **all AMOUNT_MISMATCH** exceptions”
+- “Show me **all MISSING_IN_TARGET** exceptions”
+- “Show me **duplicates from today**”
 
