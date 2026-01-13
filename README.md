@@ -1,8 +1,8 @@
 # Agentic-AI-Reconciliation-Governance-AWS
 ## Objective
-This lab demonstrates how to design and implement an **agentic, event-driven AI system** for **data reconciliation, governance, and exception triage** using fully managed AWS services.
-The goal was not to build a demo model, but to show **production-oriented decision-making**: separating deterministic data processing from AI reasoning, enforcing security best practices, enabling observability, and exposing results through an API that could support a real UI.
-This design mirrors real enterprise use cases in **financial services, compliance, and operations**, where explain-ability, auditability, and cost control matter as much as AI capability.
+This lab demonstrates how to design and implement an agentic, event-driven AI system for **data reconciliation, governance, and exception triage using fully managed AWS services.
+The goal was not to build a demo model, but to show production-oriented decision-making: separating deterministic data processing from AI reasoning, enforcing security best practices, enabling observability, and exposing results through an API that could support a real UI.
+This design mirrors real enterprise use cases in financial services, compliance, and operations, where explain-ability, auditability, and cost control matter as much as AI capability.
 
 ### Problem Statement
 Organizations routinely need to reconcile data across multiple systems (e.g., source vs. target, upstream vs. downstream). As data volume and system complexity grow, traditional reconciliation approaches begin to fail.
@@ -1094,5 +1094,16 @@ Each Lambda need AWS Tracing enabled
   ]
 }
 ```
+- Started with broad IAM to ship the workflow, then refactored to least privilege by scoping S3 access to `incoming/processed/exceptions` prefixes.”
+- Enforced encryption-at-rest using SSE-KMS with a customer-managed CMK and restricted KMS permissions to a single key ARN
+- Locked down orchestration by allowing Step Functions to invoke only the specific Lambda functions used in the state machine
 
-
+## Flow Overview
+1. CSV files are uploaded to S3 (`incoming/source/` and `incoming/target/`)
+2. An S3 event triggers EventBridge
+3. EventBridge starts a Step Functions state machine
+4. Athena runs reconciliation queries
+5. Exceptions are written to DynamoDB
+6. An AI triage agent (Amazon Bedrock + Knowledge Base) explains and classifies each exception
+7. Results are written back to DynamoDB
+8. An HTTP API exposes AI-enriched exceptions for a UI (e.g., Angular)
